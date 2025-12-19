@@ -1,0 +1,278 @@
+// Prisma schema for multi-tenant SaaS ticketing tool
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Enums
+enum TicketStatus {
+  OPEN
+  PENDING
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum MessageSource {
+  visitor
+  slack
+  agent_dashboard
+  system
+}
+
+enum WebhookDeliveryStatus {
+  pending
+  success
+  failed
+}
+
+// Account - The SaaS customer organization
+model Account {
+  id             String   @id @default(cuid())
+  name           String
+  allowedDomains String[] // Widget embed domains
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  users               User[]
+  slackInstallation   SlackInstallation?
+  slackChannelConfigs SlackChannelConfig[]
+  tickets             Ticket[]
+  visitors            Visitor[]
+  webhookEndpoints    WebhookEndpoint[]
+  widgetConfig        WidgetConfig?
+
+  @@map("accounts")
+}
+
+// User - Dashboard user belonging to an Account
+model User {
+  id           String   @id @default(cuid())
+  accountId    String
+  email        String   @unique
+  passwordHash String
+  name         String?
+  role         String   @default("member") // admin, member
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  account  Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  sessions Session[]
+
+  @@index([accountId])
+  @@map("users")
+}
+
+// Session - User sessions for authentication
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("sessions")
+}
+
+// SlackInstallation - Stores Slack OAuth tokens for an Account
+model SlackInstallation {
+  id                  String   @id @default(cuid())
+  accountId           String   @unique
+  slackTeamId         String
+  slackTeamName       String
+  botAccessToken      String   // Encrypted at rest
+  refreshToken        String?  // Encrypted, for token rotation
+  tokenExpiresAt      DateTime?
+  botUserId           String
+  scopes              String[]
+  installedAt         DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([slackTeamId])
+  @@map("slack_installations")
+}
+
+// SlackChannelConfig - Channels where tickets appear
+model SlackChannelConfig {
+  id               String   @id @default(cuid())
+  accountId        String
+  slackChannelId   String
+  slackChannelName String
+  isDefault        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, slackChannelId])
+  @@index([accountId])
+  @@map("slack_channel_configs")
+}
+
+// WidgetConfig - Theming and settings for the widget
+model WidgetConfig {
+  id              String   @id @default(cuid())
+  accountId       String   @unique
+  primaryColor    String   @default("#4A154B")
+  accentColor     String   @default("#1264A3")
+  greetingText    String   @default("Hi! How can we help you today?")
+  companyName     String?
+  officeHoursStart String?  // e.g., "09:00"
+  officeHoursEnd   String?  // e.g., "17:00"
+  officeHoursTimezone String? @default("UTC")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("widget_configs")
+}
+
+// Visitor - Anonymous or identified website visitor
+model Visitor {
+  id          String   @id @default(cuid())
+  accountId   String
+  anonymousId String   // Client-generated unique ID
+  email       String?
+  name        String?
+  metadata    Json?    // Custom key-value store from widget
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  account Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tickets Ticket[]
+
+  @@unique([accountId, anonymousId])
+  @@index([accountId])
+  @@map("visitors")
+}
+
+// Ticket - Support ticket with Slack thread mapping
+model Ticket {
+  id                  String         @id @default(cuid())
+  accountId           String
+  status              TicketStatus   @default(OPEN)
+  priority            TicketPriority @default(MEDIUM)
+  subject             String?
+  visitorId           String
+  assignedUserId      String?
+  slackChannelId      String?
+  slackThreadTs       String?        // Thread timestamp for matching replies
+  slackRootMessageTs  String?
+  slackPermalink      String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  account  Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  visitor  Visitor   @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  messages Message[]
+  webhookDeliveries WebhookDelivery[]
+
+  @@index([accountId, status])
+  @@index([accountId, slackThreadTs])
+  @@index([slackChannelId, slackThreadTs])
+  @@index([visitorId])
+  @@map("tickets")
+}
+
+// Message - Individual messages in a ticket thread
+model Message {
+  id            String        @id @default(cuid())
+  ticketId      String
+  source        MessageSource
+  text          String
+  slackTs       String?       // Slack message timestamp
+  slackUserId   String?       // Slack user who sent the message
+  slackUserName String?       // Display name from Slack
+  rawSlackEvent Json?         // Raw Slack event for debugging
+  createdAt     DateTime      @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  webhookDeliveries WebhookDelivery[]
+
+  @@index([ticketId, createdAt])
+  @@index([slackTs])
+  @@map("messages")
+}
+
+// WebhookEndpoint - Customer-configured webhook URLs
+model WebhookEndpoint {
+  id        String   @id @default(cuid())
+  accountId String
+  url       String
+  secret    String   // HMAC signing secret
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  account   Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
+
+  @@index([accountId])
+  @@map("webhook_endpoints")
+}
+
+// WebhookDelivery - Tracks webhook delivery attempts
+model WebhookDelivery {
+  id              String                @id @default(cuid())
+  endpointId      String
+  ticketId        String
+  messageId       String?
+  idempotencyKey  String                @unique
+  payload         Json
+  attemptCount    Int                   @default(0)
+  lastAttemptAt   DateTime?
+  nextAttemptAt   DateTime?
+  status          WebhookDeliveryStatus @default(pending)
+  lastError       String?
+  lastStatusCode  Int?
+  createdAt       DateTime              @default(now())
+
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  ticket   Ticket          @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  message  Message?        @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([endpointId, status])
+  @@index([nextAttemptAt])
+  @@map("webhook_deliveries")
+}
+
+// EventDedup - Prevents duplicate Slack event processing
+model EventDedup {
+  id           String   @id @default(cuid())
+  slackEventId String
+  slackTeamId  String
+  processedAt  DateTime @default(now())
+
+  @@unique([slackTeamId, slackEventId])
+  @@index([processedAt])
+  @@map("event_dedups")
+}
+
+// OAuthState - Temporary state storage for OAuth flows
+model OAuthState {
+  id        String   @id @default(cuid())
+  state     String   @unique
+  accountId String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+  @@map("oauth_states")
+}

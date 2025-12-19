@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: slacksupport-postgres
+    environment:
+      POSTGRES_USER: slacksupport
+      POSTGRES_PASSWORD: slacksupport_dev
+      POSTGRES_DB: slacksupport
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U slacksupport"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis for BullMQ and Pub/Sub
+  redis:
+    image: redis:7-alpine
+    container_name: slacksupport-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Application (optional - for production-like local testing)
+  # Uncomment to run the app in Docker
+  # app:
+  #   build: .
+  #   container_name: slacksupport-app
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     DATABASE_URL: postgresql://slacksupport:slacksupport_dev@postgres:5432/slacksupport
+  #     REDIS_URL: redis://redis:6379
+  #     NODE_ENV: production
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   env_file:
+  #     - .env
+
+volumes:
+  postgres_data:
+  redis_data:
+
+# USAGE:
+# Start the databases:
+#   docker-compose up -d postgres redis
+#
+# View logs:
+#   docker-compose logs -f
+#
+# Stop everything:
+#   docker-compose down
+#
+# Reset databases (delete all data):
+#   docker-compose down -v
+

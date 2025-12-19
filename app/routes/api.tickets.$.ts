@@ -1,0 +1,388 @@
+import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
+import { prisma } from '~/lib/db.server';
+import { requireUser, getCurrentUser } from '~/lib/auth.server';
+import { createTicketSchema, createMessageSchema, updateTicketSchema, ticketFiltersSchema } from '~/types/schemas';
+import { createTicketInSlack, postToSlack } from '~/lib/slack.server';
+import { publishTicketMessage } from '~/lib/redis.server';
+import { triggerWebhooks } from '~/lib/webhook.server';
+
+/**
+ * GET /api/tickets - List tickets (dashboard)
+ * GET /api/tickets/:id - Get single ticket
+ * POST /api/tickets - Create ticket (widget)
+ * POST /api/tickets/:id/messages - Send message
+ * PUT /api/tickets/:id - Update ticket
+ */
+export async function loader({ request, params }: LoaderFunctionArgs) {
+  const path = params['*'] || '';
+  const url = new URL(request.url);
+
+  // Widget endpoints don't require auth
+  if (path === '' && request.method === 'GET') {
+    // Dashboard: List tickets
+    const user = await requireUser(request);
+    
+    const filters = ticketFiltersSchema.parse(Object.fromEntries(url.searchParams));
+    
+    const where = {
+      accountId: user.accountId,
+      ...(filters.status && { status: filters.status }),
+      ...(filters.priority && { priority: filters.priority }),
+      ...(filters.search && {
+        OR: [
+          { subject: { contains: filters.search, mode: 'insensitive' as const } },
+          { visitor: { email: { contains: filters.search, mode: 'insensitive' as const } } },
+        ],
+      }),
+    };
+
+    const [tickets, total] = await Promise.all([
+      prisma.ticket.findMany({
+        where,
+        include: {
+          visitor: { select: { email: true, name: true, anonymousId: true } },
+          messages: { 
+            orderBy: { createdAt: 'desc' }, 
+            take: 1,
+            select: { text: true, createdAt: true, source: true }
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (filters.page - 1) * filters.limit,
+        take: filters.limit,
+      }),
+      prisma.ticket.count({ where }),
+    ]);
+
+    return Response.json({
+      tickets: tickets.map(t => ({
+        id: t.id,
+        status: t.status,
+        priority: t.priority,
+        subject: t.subject,
+        visitor: t.visitor,
+        lastMessage: t.messages[0] || null,
+        createdAt: t.createdAt,
+        slackPermalink: t.slackPermalink,
+      })),
+      pagination: {
+        page: filters.page,
+        limit: filters.limit,
+        total,
+        pages: Math.ceil(total / filters.limit),
+      },
+    });
+  }
+
+  // Single ticket
+  const ticketIdMatch = path.match(/^([^/]+)$/);
+  if (ticketIdMatch) {
+    const ticketId = ticketIdMatch[1];
+    const user = await requireUser(request);
+
+    const ticket = await prisma.ticket.findFirst({
+      where: { id: ticketId, accountId: user.accountId },
+      include: {
+        visitor: true,
+        messages: { orderBy: { createdAt: 'asc' } },
+      },
+    });
+
+    if (!ticket) {
+      return Response.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    return Response.json({ ticket });
+  }
+
+  return Response.json({ error: 'Not found' }, { status: 404 });
+}
+
+export async function action({ request, params }: ActionFunctionArgs) {
+  const path = params['*'] || '';
+
+  // Create ticket (from widget)
+  if (path === '' && request.method === 'POST') {
+    try {
+      const body = await request.json();
+      const data = createTicketSchema.parse(body);
+
+      // Validate origin/domain
+      const origin = request.headers.get('origin');
+      if (origin) {
+        const account = await prisma.account.findUnique({
+          where: { id: data.accountId },
+          select: { allowedDomains: true },
+        });
+        
+        if (account && account.allowedDomains.length > 0) {
+          const originHost = new URL(origin).hostname;
+          const isAllowed = account.allowedDomains.some(domain => 
+            originHost === domain || originHost.endsWith(`.${domain}`)
+          );
+          if (!isAllowed) {
+            return Response.json({ error: 'Origin not allowed' }, { status: 403 });
+          }
+        }
+      }
+
+      // Find or create visitor
+      let visitor = await prisma.visitor.findUnique({
+        where: {
+          accountId_anonymousId: {
+            accountId: data.accountId,
+            anonymousId: data.visitorId,
+          },
+        },
+      });
+
+      if (!visitor) {
+        visitor = await prisma.visitor.create({
+          data: {
+            accountId: data.accountId,
+            anonymousId: data.visitorId,
+            email: data.email,
+            name: data.name,
+            metadata: data.metadata ? JSON.parse(JSON.stringify(data.metadata)) : undefined,
+          },
+        });
+      } else if (data.email || data.name || data.metadata) {
+        visitor = await prisma.visitor.update({
+          where: { id: visitor.id },
+          data: {
+            ...(data.email && { email: data.email }),
+            ...(data.name && { name: data.name }),
+            ...(data.metadata && { metadata: JSON.parse(JSON.stringify(data.metadata)) }),
+          },
+        });
+      }
+
+      // Get default channel
+      const channelConfig = await prisma.slackChannelConfig.findFirst({
+        where: { accountId: data.accountId, isDefault: true },
+      });
+
+      // Create ticket
+      const ticket = await prisma.ticket.create({
+        data: {
+          accountId: data.accountId,
+          visitorId: visitor.id,
+          slackChannelId: channelConfig?.slackChannelId,
+        },
+      });
+
+      // Create first message
+      const message = await prisma.message.create({
+        data: {
+          ticketId: ticket.id,
+          source: 'visitor',
+          text: data.message,
+        },
+      });
+
+      // Post to Slack if configured
+      if (channelConfig) {
+        try {
+          const slackResult = await createTicketInSlack(
+            data.accountId,
+            channelConfig.slackChannelId,
+            {
+              id: ticket.id,
+              visitorEmail: visitor.email ?? undefined,
+              visitorName: visitor.name ?? undefined,
+              firstMessage: data.message,
+              metadata: data.metadata,
+            }
+          );
+
+          if (slackResult) {
+            await prisma.ticket.update({
+              where: { id: ticket.id },
+              data: {
+                slackThreadTs: slackResult.threadTs,
+                slackRootMessageTs: slackResult.threadTs,
+                slackPermalink: slackResult.permalink,
+              },
+            });
+          }
+        } catch (slackError) {
+          console.error('Failed to post to Slack:', slackError);
+          // Don't fail the ticket creation if Slack fails
+        }
+      }
+
+      // Trigger webhooks
+      await triggerWebhooks(
+        data.accountId,
+        ticket.id,
+        'ticket.created',
+        {
+          ticketId: ticket.id,
+          accountId: data.accountId,
+          visitorId: visitor.id,
+          messageId: message.id,
+          text: data.message,
+        },
+        message.id
+      );
+
+      return Response.json({ 
+        ticketId: ticket.id, 
+        messageId: message.id,
+        visitorId: visitor.id,
+      });
+    } catch (error) {
+      console.error('Create ticket error:', error);
+      if (error instanceof Error) {
+        return Response.json({ error: error.message }, { status: 400 });
+      }
+      return Response.json({ error: 'Failed to create ticket' }, { status: 500 });
+    }
+  }
+
+  // Send message to ticket
+  const messageMatch = path.match(/^([^/]+)\/messages$/);
+  if (messageMatch && request.method === 'POST') {
+    const ticketId = messageMatch[1];
+
+    try {
+      const body = await request.json();
+      const data = createMessageSchema.parse(body);
+
+      // Check if this is from widget or dashboard
+      const user = await getCurrentUser(request);
+      const source = user ? 'agent_dashboard' : data.source;
+
+      // Get ticket
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+        include: { account: true },
+      });
+
+      if (!ticket) {
+        return Response.json({ error: 'Ticket not found' }, { status: 404 });
+      }
+
+      // Verify access (widget: origin check, dashboard: account check)
+      if (user && user.accountId !== ticket.accountId) {
+        return Response.json({ error: 'Access denied' }, { status: 403 });
+      }
+
+      // Create message
+      const message = await prisma.message.create({
+        data: {
+          ticketId,
+          source,
+          text: data.text,
+        },
+      });
+
+      // Post to Slack thread if exists
+      if (ticket.slackChannelId && ticket.slackThreadTs) {
+        try {
+          const prefix = source === 'agent_dashboard' 
+            ? `💬 *${user?.name || 'Agent'}:*\n` 
+            : '👤 *Visitor:*\n';
+          
+          const slackResult = await postToSlack(
+            ticket.accountId,
+            ticket.slackChannelId,
+            prefix + data.text,
+            { threadTs: ticket.slackThreadTs }
+          );
+
+          if (slackResult?.ts) {
+            await prisma.message.update({
+              where: { id: message.id },
+              data: { slackTs: slackResult.ts },
+            });
+          }
+        } catch (slackError) {
+          console.error('Failed to post message to Slack:', slackError);
+        }
+      }
+
+      // Publish to WebSocket
+      await publishTicketMessage(ticketId, {
+        ticketId,
+        messageId: message.id,
+        source,
+        text: data.text,
+        createdAt: message.createdAt.toISOString(),
+        slackUserName: user?.name ?? undefined,
+      });
+
+      // Trigger webhooks
+      await triggerWebhooks(
+        ticket.accountId,
+        ticketId,
+        'message.created',
+        {
+          ticketId,
+          accountId: ticket.accountId,
+          messageId: message.id,
+          source,
+          text: data.text,
+        },
+        message.id
+      );
+
+      return Response.json({ messageId: message.id });
+    } catch (error) {
+      console.error('Send message error:', error);
+      if (error instanceof Error) {
+        return Response.json({ error: error.message }, { status: 400 });
+      }
+      return Response.json({ error: 'Failed to send message' }, { status: 500 });
+    }
+  }
+
+  // Update ticket
+  const updateMatch = path.match(/^([^/]+)$/);
+  if (updateMatch && request.method === 'PUT') {
+    const ticketId = updateMatch[1];
+
+    try {
+      const user = await requireUser(request);
+      const body = await request.json();
+      const data = updateTicketSchema.parse(body);
+
+      const ticket = await prisma.ticket.findFirst({
+        where: { id: ticketId, accountId: user.accountId },
+      });
+
+      if (!ticket) {
+        return Response.json({ error: 'Ticket not found' }, { status: 404 });
+      }
+
+      const updated = await prisma.ticket.update({
+        where: { id: ticketId },
+        data,
+      });
+
+      // Trigger webhook
+      await triggerWebhooks(
+        user.accountId,
+        ticketId,
+        'ticket.updated',
+        {
+          ticketId,
+          accountId: user.accountId,
+          status: updated.status,
+          priority: updated.priority,
+        }
+      );
+
+      return Response.json({ ticket: updated });
+    } catch (error) {
+      console.error('Update ticket error:', error);
+      if (error instanceof Error) {
+        return Response.json({ error: error.message }, { status: 400 });
+      }
+      return Response.json({ error: 'Failed to update ticket' }, { status: 500 });
+    }
+  }
+
+  return Response.json({ error: 'Not found' }, { status: 404 });
+}
+
