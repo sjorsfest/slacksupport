@@ -62,7 +62,7 @@ openssl rand -base64 32
 
 1. Go to [api.slack.com/apps](https://api.slack.com/apps)
 2. Click "Create New App" → "From an app manifest"
-3. Paste the contents of `slack-app-manifest.yaml`
+3. Paste the contents of `slack-app-manifest.json`
 4. Replace `YOUR_DOMAIN` with your ngrok URL (see below)
 5. Install to your workspace
 6. Copy credentials to `.env`:

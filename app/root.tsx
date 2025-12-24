@@ -27,6 +27,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {children}
         <ScrollRestoration />
         <Scripts />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.SupportWidget = { accountId: "cmjjtjd6e000004l7av2fv15r" };`,
+          }}
+        />
+        <script async src="https://slacksupport.vercel.app/widget/loader.js" />
       </body>
     </html>
   );

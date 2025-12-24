@@ -1,0 +1,46 @@
+{
+  "display_information": {
+    "name": "Support Widget",
+    "description": "Customer support tickets delivered to your Slack workspace",
+    "background_color": "#4A154B",
+    "long_description": "Support Widget connects your website's support chat to Slack. \nWhen visitors send messages through your website widget, tickets are \ncreated as Slack threads. Your team can respond directly from Slack, \nand messages sync in real-time back to the visitor.\n"
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "Support Widget",
+      "always_online": true
+    }
+  },
+  "oauth_config": {
+    "redirect_urls": [
+      "https://YOUR_DOMAIN/slack/oauth/callback"
+    ],
+    "scopes": {
+      "bot": [
+        "channels:history",
+        "channels:read",
+        "channels:join",
+        "chat:write",
+        "users:read",
+        "groups:history",
+        "groups:read"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "request_url": "https://YOUR_DOMAIN/slack/events",
+      "bot_events": [
+        "message.channels",
+        "message.groups"
+      ]
+    },
+    "interactivity": {
+      "is_enabled": true,
+      "request_url": "https://YOUR_DOMAIN/slack/interactive"
+    },
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": false,
+    "token_rotation_enabled": false
+  }
+}
