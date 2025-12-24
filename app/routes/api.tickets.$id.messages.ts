@@ -11,6 +11,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const since = url.searchParams.get('since');
 
+  console.log(`[Polling] Fetching messages for ticket ${ticketId}${since ? ` since ${since}` : ''}`);
+
   if (!ticketId) {
     return Response.json({ error: 'Missing ticket ID' }, { status: 400 });
   }

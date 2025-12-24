@@ -63,6 +63,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
   
   // Use polling on serverless environments (Vercel, Lambda, etc.) where SSE doesn't work reliably
   const usePolling = isServerless();
+  
+  if (usePolling) {
+    console.log("[Widget] Running in SERVERLESS mode - using polling for real-time updates");
+  } else {
+    console.log("[Widget] Running in PERSISTENT SERVER mode - using SSE for real-time updates");
+  }
 
   return {
     accountId,

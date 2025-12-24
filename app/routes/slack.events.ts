@@ -58,7 +58,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
     if (isServerless()) {
       // Serverless: Process inline (no workers available)
-      console.log(`[${getDeploymentEnvironment()}] Processing Slack event inline: ${eventId}`);
+      console.log(`[Slack Events] Running in SERVERLESS mode (${getDeploymentEnvironment()}) - Processing event inline: ${eventId}`);
       
       try {
         const result = await processSlackEvent(eventId, payload);
@@ -69,7 +69,7 @@ export async function action({ request }: ActionFunctionArgs) {
       }
     } else {
       // Persistent server: Queue for background processing
-      console.log(`[Persistent Server] Queueing Slack event: ${eventId}`);
+      console.log(`[Slack Events] Running in PERSISTENT SERVER mode - Queueing event: ${eventId}`);
       
       enqueueSlackEvent(eventId, payload).catch((err) => {
         console.error('Failed to enqueue Slack event:', err);

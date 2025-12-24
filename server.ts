@@ -11,6 +11,7 @@ async function start() {
   const app = express();
 
   // Initialize workers - needed for both dev and production
+  console.log('ℹ️ Running in PERSISTENT SERVER mode (VPC)');
   startAllWorkers();
   console.log('✅ BullMQ workers started');
 
