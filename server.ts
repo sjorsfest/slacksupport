@@ -1,5 +1,6 @@
+import type { ServerBuild } from 'react-router';
 import { createServer } from 'http';
-import { createRequestHandler } from '@react-router/node';
+import { createRequestHandler } from '@react-router/express';
 import express from 'express';
 import { initializeWebSocketServer } from './app/lib/ws.server';
 import { startAllWorkers } from './app/jobs';
@@ -34,7 +35,7 @@ async function start() {
     // Handle React Router requests through Vite
     app.all('*', async (req, res, next) => {
       try {
-        const build = await vite.ssrLoadModule('virtual:react-router/server-build');
+        const build = await vite.ssrLoadModule('virtual:react-router/server-build') as unknown as ServerBuild;
         const handler = createRequestHandler({ build });
         return handler(req, res, next);
       } catch (e) {
