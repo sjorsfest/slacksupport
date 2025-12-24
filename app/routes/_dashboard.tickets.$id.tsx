@@ -70,10 +70,6 @@ export default function TicketDetail() {
   const { ticket, user, baseUrl } = useLoaderData<typeof loader>();
   const params = useParams();
   const [messages, setMessages] = useState<Message[]>(ticket.messages);
-  const [inputValue, setInputValue] = useState('');
-  const [isSending, setIsSending] = useState(false);
-  const [status, setStatus] = useState(ticket.status);
-  const [priority, setPriority] = useState(ticket.priority);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -122,60 +118,6 @@ export default function TicketDetail() {
     };
   }, [connectWebSocket]);
 
-  const handleSendMessage = async () => {
-    const text = inputValue.trim();
-    if (!text || isSending) return;
-
-    setIsSending(true);
-    setInputValue('');
-
-    try {
-      const response = await fetch(`/api/tickets/${params.id}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, source: 'agent_dashboard' }),
-      });
-
-      if (!response.ok) throw new Error('Failed to send message');
-
-      const result = await response.json();
-      
-      // Add message locally (WebSocket will also deliver it)
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === result.messageId)) return prev;
-        return [...prev, {
-          id: result.messageId,
-          source: 'agent_dashboard',
-          text,
-          createdAt: new Date().toISOString(),
-          slackUserName: user.name,
-        }];
-      });
-    } catch (error) {
-      console.error('Failed to send message:', error);
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const handleUpdateStatus = async (newStatus: string) => {
-    setStatus(newStatus as typeof status);
-    await fetch(`/api/tickets/${params.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus }),
-    });
-  };
-
-  const handleUpdatePriority = async (newPriority: string) => {
-    setPriority(newPriority as typeof priority);
-    await fetch(`/api/tickets/${params.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ priority: newPriority }),
-    });
-  };
-
   const formatTime = (dateStr: string) => {
     return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
@@ -208,12 +150,12 @@ export default function TicketDetail() {
               href={ticket.slackPermalink}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#4A154B] text-white rounded-lg text-sm font-medium hover:bg-[#3D1141] transition-colors shadow-sm"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313z"/>
               </svg>
-              View in Slack
+              Reply in Slack
             </a>
           )}
         </header>
@@ -250,30 +192,9 @@ export default function TicketDetail() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Composer */}
-        <div className="px-6 py-4 bg-white border-t border-gray-200">
-          <div className="flex items-end gap-3">
-            <textarea
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              placeholder="Type a message..."
-              rows={1}
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-xl resize-none focus:ring-2 focus:ring-[#4A154B] focus:border-transparent"
-            />
-            <button
-              onClick={handleSendMessage}
-              disabled={!inputValue.trim() || isSending}
-              className="px-5 py-3 bg-[#4A154B] text-white font-medium rounded-xl hover:bg-[#3D1141] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSending ? 'Sending...' : 'Send'}
-            </button>
-          </div>
+        {/* Read-only footer */}
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 text-center text-sm text-gray-500">
+          This ticket is read-only. Please use Slack to reply to the customer.
         </div>
       </div>
 
@@ -311,33 +232,17 @@ export default function TicketDetail() {
           {/* Status */}
           <div>
             <h3 className="text-sm font-medium text-gray-900 mb-2">Status</h3>
-            <select
-              value={status}
-              onChange={(e) => handleUpdateStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#4A154B] focus:border-transparent"
-            >
-              {statusOptions.map((s) => (
-                <option key={s} value={s}>
-                  {s.charAt(0) + s.slice(1).toLowerCase()}
-                </option>
-              ))}
-            </select>
+            <div className={`px-3 py-2 rounded-lg text-sm font-medium ${statusColors[ticket.status] || 'bg-gray-100 text-gray-800'}`}>
+              {ticket.status.charAt(0) + ticket.status.slice(1).toLowerCase()}
+            </div>
           </div>
 
           {/* Priority */}
           <div>
             <h3 className="text-sm font-medium text-gray-900 mb-2">Priority</h3>
-            <select
-              value={priority}
-              onChange={(e) => handleUpdatePriority(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#4A154B] focus:border-transparent"
-            >
-              {priorityOptions.map((p) => (
-                <option key={p} value={p}>
-                  {p.charAt(0) + p.slice(1).toLowerCase()}
-                </option>
-              ))}
-            </select>
+            <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 bg-gray-50">
+              {ticket.priority.charAt(0) + ticket.priority.slice(1).toLowerCase()}
+            </div>
           </div>
 
           {/* Ticket info */}

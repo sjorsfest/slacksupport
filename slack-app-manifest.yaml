@@ -37,7 +37,8 @@ settings:
       - message.channels
       - message.groups
   interactivity:
-    is_enabled: false
+    is_enabled: true
+    request_url: https://YOUR_DOMAIN/slack/interactive
   org_deploy_enabled: false
   socket_mode_enabled: false
   token_rotation_enabled: false

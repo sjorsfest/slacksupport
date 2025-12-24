@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { WebClient } from '@slack/web-api';
-import type { ChatPostMessageResponse } from '@slack/web-api';
+import type { ChatPostMessageResponse, ViewsOpenResponse } from '@slack/web-api';
+import { TicketStatus } from '@prisma/client';
 import { prisma } from './db.server';
 import { encrypt, decrypt } from './crypto.server';
 
@@ -273,6 +274,63 @@ export async function createTicketInSlack(
       ] as never[],
     });
 
+    // Add interactive button
+    if (result.ok && result.ts) {
+      await client.chat.update({
+        channel: channelId,
+        ts: result.ts,
+        text: `🎫 New Support Ticket`, // Fallback text
+        blocks: [
+          {
+            type: 'header',
+            text: {
+              type: 'plain_text',
+              text: '🎫 New Support Ticket',
+              emoji: true,
+            },
+          },
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: ticket.firstMessage,
+            },
+          },
+          ...(metadataFields.length > 0 ? [{
+            type: 'section' as const,
+            fields: metadataFields as Array<{ type: 'mrkdwn'; text: string }>,
+          }] : []),
+          {
+            type: 'actions',
+            elements: [
+              {
+                type: 'button',
+                text: {
+                  type: 'plain_text',
+                  text: 'Update Status',
+                  emoji: true,
+                },
+                value: ticket.id,
+                action_id: 'update_status',
+              },
+            ],
+          },
+          {
+            type: 'divider',
+          },
+          {
+            type: 'context',
+            elements: [
+              {
+                type: 'mrkdwn',
+                text: `<${dashboardUrl}|View in Dashboard> • Reply in this thread to respond`,
+              },
+            ],
+          },
+        ] as never[],
+      });
+    }
+
     if (result.ok && result.ts) {
       // Get permalink
       let permalink: string | undefined;
@@ -412,3 +470,173 @@ export type SlackEventPayload = {
   event?: SlackMessageEvent;
 };
 
+/**
+ * Open a modal to update ticket status.
+ */
+export async function openStatusModal(
+  accountId: string,
+  triggerId: string,
+  ticketId: string,
+  currentStatus: string
+): Promise<ViewsOpenResponse | null> {
+  const client = await getSlackClient(accountId);
+  if (!client) {
+    return null;
+  }
+
+  try {
+    const result = await client.views.open({
+      trigger_id: triggerId,
+      view: {
+        type: 'modal',
+        callback_id: 'update_status_modal',
+        private_metadata: ticketId,
+        title: {
+          type: 'plain_text',
+          text: 'Update Ticket Status',
+        },
+        submit: {
+          type: 'plain_text',
+          text: 'Update',
+        },
+        close: {
+          type: 'plain_text',
+          text: 'Cancel',
+        },
+        blocks: [
+          {
+            type: 'input',
+            block_id: 'status_block',
+            label: {
+              type: 'plain_text',
+              text: 'Select new status',
+            },
+            element: {
+              type: 'static_select',
+              action_id: 'status_selection',
+              initial_option: {
+                text: {
+                  type: 'plain_text',
+                  text: currentStatus,
+                },
+                value: currentStatus,
+              },
+              options: Object.values(TicketStatus).map((status) => ({
+                text: {
+                  type: 'plain_text',
+                  text: status,
+                },
+                value: status,
+              })),
+            },
+          },
+        ],
+      },
+    });
+    return result;
+  } catch (error) {
+    console.error('Failed to open status modal:', error);
+    return null;
+  }
+}
+
+/**
+ * Update the original Slack message to reflect the new status.
+ */
+export async function updateSlackMessage(
+  accountId: string,
+  channelId: string,
+  ts: string,
+  ticket: {
+    id: string;
+    status: TicketStatus;
+    firstMessage: string;
+    visitorEmail?: string;
+    visitorName?: string;
+    metadata?: Record<string, unknown>;
+  }
+): Promise<void> {
+  const client = await getSlackClient(accountId);
+  if (!client) {
+    return;
+  }
+
+  const dashboardUrl = `${BASE_URL}/tickets/${ticket.id}`;
+  
+  // Rebuild metadata fields
+  const metadataFields: Array<{ type: string; text: string }> = [];
+  if (ticket.visitorEmail) {
+    metadataFields.push({ type: 'mrkdwn', text: `*Email:* ${ticket.visitorEmail}` });
+  }
+  if (ticket.visitorName) {
+    metadataFields.push({ type: 'mrkdwn', text: `*Name:* ${ticket.visitorName}` });
+  }
+  if (ticket.metadata) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const meta = ticket.metadata as Record<string, any>;
+    for (const [key, value] of Object.entries(meta)) {
+      metadataFields.push({ type: 'mrkdwn', text: `*${key}:* ${String(value)}` });
+    }
+  }
+
+  // Add status to metadata
+  metadataFields.push({ type: 'mrkdwn', text: `*Status:* ${ticket.status}` });
+
+  try {
+    await client.chat.update({
+      channel: channelId,
+      ts: ts,
+      text: `🎫 Support Ticket (${ticket.status})`,
+      blocks: [
+        {
+          type: 'header',
+          text: {
+            type: 'plain_text',
+            text: `🎫 Support Ticket (${ticket.status})`,
+            emoji: true,
+          },
+        },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: ticket.firstMessage,
+          },
+        },
+        ...(metadataFields.length > 0 ? [{
+          type: 'section' as const,
+          fields: metadataFields as Array<{ type: 'mrkdwn'; text: string }>,
+        }] : []),
+        {
+          type: 'actions',
+          elements: [
+            {
+              type: 'button',
+              text: {
+                type: 'plain_text',
+                text: 'Update Status',
+                emoji: true,
+              },
+              value: ticket.id,
+              action_id: 'update_status',
+            },
+          ],
+        },
+        {
+          type: 'divider',
+        },
+        {
+          type: 'context',
+          elements: [
+            {
+              type: 'mrkdwn',
+              text: `<${dashboardUrl}|View in Dashboard> • Reply in this thread to respond`,
+            },
+          ],
+        },
+      ] as never[],
+    });
+  } catch (error) {
+    console.error('Failed to update Slack message:', error);
+  }
+}

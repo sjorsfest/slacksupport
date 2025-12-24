@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router";
 
 export default function Signup() {
   const [error, setError] = useState<string | null>(null);
@@ -12,27 +12,27 @@ export default function Signup() {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
-    
+
     try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: formData.get('email'),
-          password: formData.get('password'),
-          name: formData.get('name'),
-          companyName: formData.get('companyName'),
+          email: formData.get("email"),
+          password: formData.get("password"),
+          name: formData.get("name"),
+          companyName: formData.get("companyName"),
         }),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Signup failed');
+        throw new Error(data.error || "Signup failed");
       }
 
-      navigate('/onboarding');
+      navigate("/onboarding");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Signup failed');
+      setError(err instanceof Error ? err.message : "Signup failed");
     } finally {
       setIsLoading(false);
     }
@@ -40,8 +40,10 @@ export default function Signup() {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">Create your account</h2>
-      
+      <h2 className="text-xl font-semibold text-gray-900 mb-6">
+        Create your account
+      </h2>
+
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
           {error}
@@ -50,7 +52,10 @@ export default function Signup() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="name"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Your name
           </label>
           <input
@@ -64,7 +69,10 @@ export default function Signup() {
         </div>
 
         <div>
-          <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="companyName"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Company name
           </label>
           <input
@@ -73,12 +81,14 @@ export default function Signup() {
             name="companyName"
             required
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A154B] focus:border-transparent transition-shadow"
-            placeholder="Acme Inc."
           />
         </div>
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="email"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Work email
           </label>
           <input
@@ -92,7 +102,10 @@ export default function Signup() {
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Password
           </label>
           <input
@@ -112,17 +125,19 @@ export default function Signup() {
           disabled={isLoading}
           className="w-full py-2.5 px-4 bg-[#4A154B] text-white font-medium rounded-lg hover:bg-[#3D1141] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#4A154B] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isLoading ? 'Creating account...' : 'Create account'}
+          {isLoading ? "Creating account..." : "Create account"}
         </button>
       </form>
 
       <p className="mt-6 text-center text-sm text-gray-600">
-        Already have an account?{' '}
-        <Link to="/login" className="text-[#4A154B] font-medium hover:underline">
+        Already have an account?{" "}
+        <Link
+          to="/login"
+          className="text-[#4A154B] font-medium hover:underline"
+        >
           Sign in
         </Link>
       </p>
     </div>
   );
 }
-

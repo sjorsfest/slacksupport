@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { useLoaderData } from 'react-router';
-import type { LoaderFunctionArgs } from 'react-router';
-import { requireUser } from '~/lib/auth.server';
-import { prisma } from '~/lib/db.server';
+import { useState } from "react";
+import { useLoaderData } from "react-router";
+import type { LoaderFunctionArgs } from "react-router";
+import { requireUser } from "~/lib/auth.server";
+import { prisma } from "~/lib/db.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -17,31 +17,32 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }),
   ]);
 
-  const baseUrl = process.env.BASE_URL || 'http://localhost:5173';
+  const baseUrl = process.env.BASE_URL || "http://localhost:5173";
 
   return {
     accountId: user.accountId,
     allowedDomains: account?.allowedDomains || [],
     config: widgetConfig || {
-      primaryColor: '#4A154B',
-      accentColor: '#1264A3',
-      greetingText: 'Hi! How can we help you today?',
-      companyName: '',
+      primaryColor: "#4A154B",
+      accentColor: "#1264A3",
+      greetingText: "Hi! How can we help you today?",
+      companyName: "",
     },
     baseUrl,
   };
 }
 
 export default function WidgetSettings() {
-  const { accountId, allowedDomains, config, baseUrl } = useLoaderData<typeof loader>();
+  const { accountId, allowedDomains, config, baseUrl } =
+    useLoaderData<typeof loader>();
   const [primaryColor, setPrimaryColor] = useState(config.primaryColor);
   const [accentColor, setAccentColor] = useState(config.accentColor);
   const [greetingText, setGreetingText] = useState(config.greetingText);
-  const [companyName, setCompanyName] = useState(config.companyName || '');
+  const [companyName, setCompanyName] = useState(config.companyName || "");
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [domains, setDomains] = useState(allowedDomains);
-  const [newDomain, setNewDomain] = useState('');
+  const [newDomain, setNewDomain] = useState("");
   const [copied, setCopied] = useState(false);
 
   const embedCode = `<script>
@@ -67,9 +68,9 @@ export default function WidgetSettings() {
   const handleSaveConfig = async () => {
     setIsSaving(true);
     try {
-      await fetch('/api/account/widget-config', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      await fetch("/api/account/widget-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           primaryColor,
           accentColor,
@@ -80,16 +81,16 @@ export default function WidgetSettings() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (error) {
-      console.error('Failed to save config:', error);
+      console.error("Failed to save config:", error);
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleSaveDomains = async () => {
-    await fetch('/api/account/allowed-domains', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+    await fetch("/api/account/allowed-domains", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ domains }),
     });
   };
@@ -99,11 +100,11 @@ export default function WidgetSettings() {
     if (domain && !domains.includes(domain)) {
       const newDomains = [...domains, domain];
       setDomains(newDomains);
-      setNewDomain('');
+      setNewDomain("");
       // Auto-save
-      fetch('/api/account/allowed-domains', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      fetch("/api/account/allowed-domains", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ domains: newDomains }),
       });
     }
@@ -112,9 +113,9 @@ export default function WidgetSettings() {
   const removeDomain = (domain: string) => {
     const newDomains = domains.filter((d) => d !== domain);
     setDomains(newDomains);
-    fetch('/api/account/allowed-domains', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+    fetch("/api/account/allowed-domains", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ domains: newDomains }),
     });
   };
@@ -129,7 +130,9 @@ export default function WidgetSettings() {
     <div className="p-8 max-w-4xl">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Widget Settings</h1>
-        <p className="text-gray-600 mt-1">Customize and embed your support widget</p>
+        <p className="text-gray-600 mt-1">
+          Customize and embed your support widget
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -137,8 +140,10 @@ export default function WidgetSettings() {
         <div className="space-y-6">
           {/* Appearance */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Appearance</h2>
-            
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Appearance
+            </h2>
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -148,7 +153,6 @@ export default function WidgetSettings() {
                   type="text"
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
-                  placeholder="Acme Inc."
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A154B] focus:border-transparent"
                 />
               </div>
@@ -212,14 +216,16 @@ export default function WidgetSettings() {
                 disabled={isSaving}
                 className="w-full py-2.5 bg-[#4A154B] text-white font-medium rounded-lg hover:bg-[#3D1141] transition-colors disabled:opacity-50"
               >
-                {saved ? '✓ Saved!' : isSaving ? 'Saving...' : 'Save Changes'}
+                {saved ? "✓ Saved!" : isSaving ? "Saving..." : "Save Changes"}
               </button>
             </div>
           </div>
 
           {/* Allowed Domains */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Allowed Domains</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+              Allowed Domains
+            </h2>
             <p className="text-gray-600 text-sm mb-4">
               Only these domains can embed your widget
             </p>
@@ -229,7 +235,9 @@ export default function WidgetSettings() {
                 type="text"
                 value={newDomain}
                 onChange={(e) => setNewDomain(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addDomain())}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && (e.preventDefault(), addDomain())
+                }
                 placeholder="example.com"
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A154B] focus:border-transparent"
               />
@@ -249,24 +257,43 @@ export default function WidgetSettings() {
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm"
                   >
                     {domain}
-                    <button onClick={() => removeDomain(domain)} className="text-gray-400 hover:text-gray-600">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <button
+                      onClick={() => removeDomain(domain)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
                       </svg>
                     </button>
                   </span>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500">No domains configured. Widget will work on any domain.</p>
+              <p className="text-sm text-gray-500">
+                No domains configured. Widget will work on any domain.
+              </p>
             )}
           </div>
 
           {/* Embed Code */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Embed Code</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+              Embed Code
+            </h2>
             <p className="text-gray-600 text-sm mb-4">
-              Add this snippet before the closing <code className="bg-gray-100 px-1 rounded">&lt;/body&gt;</code> tag
+              Add this snippet before the closing{" "}
+              <code className="bg-gray-100 px-1 rounded">&lt;/body&gt;</code>{" "}
+              tag
             </p>
 
             <div className="relative">
@@ -278,12 +305,32 @@ export default function WidgetSettings() {
                 className="absolute top-2 right-2 p-2 bg-gray-800 text-gray-300 rounded hover:bg-gray-700"
               >
                 {copied ? (
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 ) : (
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
                   </svg>
                 )}
               </button>
@@ -303,8 +350,10 @@ export default function WidgetSettings() {
         {/* Right column: Preview */}
         <div className="lg:sticky lg:top-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Preview</h2>
-            
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Preview
+            </h2>
+
             <div className="relative bg-gray-100 rounded-lg h-[500px] overflow-hidden">
               {/* Fake website background */}
               <div className="absolute inset-0 p-4">
@@ -318,11 +367,13 @@ export default function WidgetSettings() {
               <div className="absolute bottom-4 right-4">
                 {/* Chat panel */}
                 <div className="mb-3 w-80 bg-white rounded-2xl shadow-xl overflow-hidden">
-                  <div 
+                  <div
                     className="px-4 py-3 text-white font-medium text-sm"
-                    style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)` }}
+                    style={{
+                      background: `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`,
+                    }}
                   >
-                    {companyName || 'Support'}
+                    {companyName || "Support"}
                   </div>
                   <div className="p-4 bg-gray-50">
                     <div className="text-center text-gray-600 text-sm py-4">
@@ -335,12 +386,16 @@ export default function WidgetSettings() {
                       <div className="flex-1 bg-gray-100 rounded-lg px-3 py-2 text-gray-400 text-sm">
                         Send a message...
                       </div>
-                      <div 
+                      <div
                         className="w-8 h-8 rounded-full flex items-center justify-center"
                         style={{ backgroundColor: accentColor }}
                       >
-                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                        <svg
+                          className="w-4 h-4 text-white"
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
                         </svg>
                       </div>
                     </div>
@@ -348,12 +403,16 @@ export default function WidgetSettings() {
                 </div>
 
                 {/* Launcher button */}
-                <div 
+                <div
                   className="w-14 h-14 rounded-full shadow-lg flex items-center justify-center ml-auto"
                   style={{ backgroundColor: primaryColor }}
                 >
-                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+                  <svg
+                    className="w-6 h-6 text-white"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z" />
                   </svg>
                 </div>
               </div>
@@ -364,4 +423,3 @@ export default function WidgetSettings() {
     </div>
   );
 }
-
