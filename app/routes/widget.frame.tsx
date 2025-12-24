@@ -109,7 +109,7 @@ export default function WidgetFrame() {
   const [isConnected, setIsConnected] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const wsRef = useRef<WebSocket | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [visitorInfo, setVisitorInfo] = useState({
@@ -125,72 +125,74 @@ export default function WidgetFrame() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // WebSocket connection
-  const connectWebSocket = useCallback(() => {
+  // SSE connection for real-time messages (works on Vercel + VPC)
+  const connectSSE = useCallback(() => {
     if (!ticketId) return;
 
-    const wsUrl = `${data.baseUrl.replace("http", "ws")}/ws?ticketId=${ticketId}`;
-    const ws = new WebSocket(wsUrl);
+    // Close existing connection if any
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
 
-    ws.onopen = () => {
+    const sseUrl = `${data.baseUrl}/api/tickets/${ticketId}/stream`;
+    const eventSource = new EventSource(sseUrl);
+
+    eventSource.addEventListener("connected", () => {
       setIsConnected(true);
-      console.log("WebSocket connected");
-    };
+      console.log("SSE connected");
+    });
 
-    ws.onmessage = (event) => {
+    eventSource.addEventListener("message", (event) => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.type === "message" && data.data) {
-          const newMessage: Message = {
-            id: data.data.messageId,
-            source: data.data.source,
-            text: data.data.text,
-            createdAt: data.data.createdAt,
-            slackUserName: data.data.slackUserName,
-          };
-          setMessages((prev) => {
-            // Avoid duplicates
-            if (prev.some((m) => m.id === newMessage.id)) return prev;
-            return [...prev, newMessage];
-          });
-          // Notify parent of new message
-          window.parent.postMessage({ type: "sw:newMessage" }, "*");
-        }
+        const messageData = JSON.parse(event.data);
+        const newMessage: Message = {
+          id: messageData.messageId,
+          source: messageData.source,
+          text: messageData.text,
+          createdAt: messageData.createdAt,
+          slackUserName: messageData.slackUserName,
+        };
+        setMessages((prev) => {
+          // Avoid duplicates
+          if (prev.some((m) => m.id === newMessage.id)) return prev;
+          return [...prev, newMessage];
+        });
+        // Notify parent of new message
+        window.parent.postMessage({ type: "sw:newMessage" }, "*");
       } catch (e) {
-        console.error("Failed to parse WebSocket message:", e);
+        console.error("Failed to parse SSE message:", e);
       }
-    };
+    });
 
-    ws.onclose = () => {
+    eventSource.onerror = (error) => {
+      console.error("SSE error:", error);
       setIsConnected(false);
-      console.log("WebSocket disconnected, reconnecting...");
+      eventSource.close();
+      
       // Reconnect after 3 seconds
       reconnectTimeoutRef.current = setTimeout(() => {
-        connectWebSocket();
+        console.log("SSE reconnecting...");
+        connectSSE();
       }, 3000);
     };
 
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
-
-    wsRef.current = ws;
+    eventSourceRef.current = eventSource;
   }, [ticketId, data.baseUrl]);
 
   useEffect(() => {
     if (ticketId) {
-      connectWebSocket();
+      connectSSE();
     }
 
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
       }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [ticketId, connectWebSocket]);
+  }, [ticketId, connectSSE]);
 
   // Notify parent that widget is ready
   useEffect(() => {

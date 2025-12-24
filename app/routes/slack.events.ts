@@ -1,11 +1,17 @@
 import type { ActionFunctionArgs } from 'react-router';
 import { verifySlackSignature, type SlackEventPayload } from '~/lib/slack.server';
 import { enqueueSlackEvent } from '~/lib/redis.server';
+import { isServerless, getDeploymentEnvironment } from '~/lib/env.server';
+import { processSlackEvent } from '~/lib/slack-processor.server';
 
 /**
  * POST /slack/events
  * Receives events from Slack Events API.
  * Must respond quickly (within 3 seconds) to avoid retries.
+ * 
+ * Processing modes:
+ * - Serverless (Vercel, Lambda): Process inline immediately
+ * - Persistent server: Queue for background worker processing
  */
 export async function action({ request }: ActionFunctionArgs) {
   // Only accept POST requests
@@ -46,13 +52,29 @@ export async function action({ request }: ActionFunctionArgs) {
     });
   }
 
-  // For event_callback, acknowledge immediately and process async
+  // For event_callback, process based on environment
   if (payload.type === 'event_callback' && payload.event_id) {
-    // Enqueue for async processing - this is non-blocking
-    // The job will handle deduplication via event_id
-    enqueueSlackEvent(payload.event_id, payload).catch((err) => {
-      console.error('Failed to enqueue Slack event:', err);
-    });
+    const eventId = payload.event_id;
+
+    if (isServerless()) {
+      // Serverless: Process inline (no workers available)
+      console.log(`[${getDeploymentEnvironment()}] Processing Slack event inline: ${eventId}`);
+      
+      try {
+        const result = await processSlackEvent(eventId, payload);
+        console.log(`Inline processing result:`, result);
+      } catch (err) {
+        console.error('Failed to process Slack event inline:', err);
+        // Still return 200 to avoid Slack retries - event is already deduplicated
+      }
+    } else {
+      // Persistent server: Queue for background processing
+      console.log(`[Persistent Server] Queueing Slack event: ${eventId}`);
+      
+      enqueueSlackEvent(eventId, payload).catch((err) => {
+        console.error('Failed to enqueue Slack event:', err);
+      });
+    }
 
     // Respond immediately with 200 OK
     return new Response('OK', { status: 200 });
@@ -61,4 +83,3 @@ export async function action({ request }: ActionFunctionArgs) {
   // Unknown event type
   return new Response('OK', { status: 200 });
 }
-
