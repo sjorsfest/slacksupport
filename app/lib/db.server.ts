@@ -1,16 +1,13 @@
-import pkg from '@prisma/client';
-import type { PrismaClient as PrismaClientType } from '@prisma/client';
-
-const { PrismaClient } = pkg;
+import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import pg from 'pg';
 
 declare global {
   // eslint-disable-next-line no-var
-  var __prisma: PrismaClientType | undefined;
+  var __prisma: PrismaClient | undefined;
 }
 
-function createPrismaClient(): PrismaClientType {
+function createPrismaClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
   
   if (!connectionString) {
