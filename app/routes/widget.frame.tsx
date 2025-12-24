@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import { useLoaderData } from "react-router";
 import { prisma } from "~/lib/db.server";
+import { isServerless } from "~/lib/env.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -59,6 +60,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 
   const baseUrl = process.env.BASE_URL || "http://localhost:5173";
+  
+  // Use polling on serverless environments (Vercel, Lambda, etc.) where SSE doesn't work reliably
+  const usePolling = isServerless();
 
   return {
     accountId,
@@ -85,6 +89,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         }
       : null,
     baseUrl,
+    usePolling,
   };
 }
 
@@ -108,9 +113,13 @@ export default function WidgetFrame() {
   const [inputValue, setInputValue] = useState("");
   const [isConnected, setIsConnected] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [isIdle, setIsIdle] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const idleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastActivityRef = useRef<Date>(new Date());
+  const lastMessageTimeRef = useRef<string | null>(null);
 
   const [visitorInfo, setVisitorInfo] = useState({
     name: data.name || "",
@@ -120,14 +129,93 @@ export default function WidgetFrame() {
     !data.name || !data.email
   );
 
+  const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+  const POLLING_INTERVAL_MS = 2000; // 2 seconds
+
+  // Reset idle timeout on activity
+  const resetIdleTimeout = useCallback(() => {
+    lastActivityRef.current = new Date();
+    if (isIdle) {
+      setIsIdle(false);
+    }
+    
+    if (idleTimeoutRef.current) {
+      clearTimeout(idleTimeoutRef.current);
+    }
+    
+    if (data.usePolling && ticketId) {
+      idleTimeoutRef.current = setTimeout(() => {
+        console.log("Chat idle, stopping polling");
+        setIsIdle(true);
+        setIsConnected(false);
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+      }, IDLE_TIMEOUT_MS);
+    }
+  }, [isIdle, data.usePolling, ticketId]);
+
   // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // SSE connection for real-time messages (works on Vercel + VPC)
+  // Polling for serverless environments (Vercel, Lambda, etc.)
+  const startPolling = useCallback(() => {
+    if (!ticketId || !data.usePolling) return;
+
+    setIsConnected(true);
+    setIsIdle(false);
+    resetIdleTimeout();
+
+    // Set initial last message time
+    if (!lastMessageTimeRef.current && messages.length > 0) {
+      lastMessageTimeRef.current = messages[messages.length - 1].createdAt;
+    }
+
+    const poll = async () => {
+      try {
+        const since = lastMessageTimeRef.current || '';
+        const url = `${data.baseUrl}/api/tickets/${ticketId}/messages${since ? `?since=${encodeURIComponent(since)}` : ''}`;
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          console.error("Polling error:", response.status);
+          return;
+        }
+
+        const result = await response.json();
+        
+        if (result.messages && result.messages.length > 0) {
+          // Update last message time
+          lastMessageTimeRef.current = result.messages[result.messages.length - 1].createdAt;
+          
+          // Add new messages
+          setMessages((prev) => {
+            const newMsgs = result.messages.filter(
+              (m: Message) => !prev.some((p) => p.id === m.id)
+            );
+            if (newMsgs.length > 0) {
+              window.parent.postMessage({ type: "sw:newMessage" }, "*");
+              return [...prev, ...newMsgs];
+            }
+            return prev;
+          });
+        }
+      } catch (e) {
+        console.error("Polling error:", e);
+      }
+    };
+
+    // Poll immediately, then every 2 seconds
+    poll();
+    pollingIntervalRef.current = setInterval(poll, POLLING_INTERVAL_MS);
+  }, [ticketId, data.usePolling, data.baseUrl, messages, resetIdleTimeout]);
+
+  // SSE connection for persistent server environments
   const connectSSE = useCallback(() => {
-    if (!ticketId) return;
+    if (!ticketId || data.usePolling) return;
 
     // Close existing connection if any
     if (eventSourceRef.current) {
@@ -170,29 +258,44 @@ export default function WidgetFrame() {
       eventSource.close();
       
       // Reconnect after 3 seconds
-      reconnectTimeoutRef.current = setTimeout(() => {
+      setTimeout(() => {
         console.log("SSE reconnecting...");
         connectSSE();
       }, 3000);
     };
 
     eventSourceRef.current = eventSource;
-  }, [ticketId, data.baseUrl]);
+  }, [ticketId, data.baseUrl, data.usePolling]);
 
+  // Start real-time connection based on environment
   useEffect(() => {
     if (ticketId) {
-      connectSSE();
+      if (data.usePolling) {
+        startPolling();
+      } else {
+        connectSSE();
+      }
     }
 
     return () => {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+      if (idleTimeoutRef.current) {
+        clearTimeout(idleTimeoutRef.current);
       }
     };
-  }, [ticketId, connectSSE]);
+  }, [ticketId, data.usePolling, connectSSE, startPolling]);
+
+  // Continue chat after idle
+  const handleContinueChat = () => {
+    if (data.usePolling && ticketId) {
+      startPolling();
+    }
+  };
 
   // Notify parent that widget is ready
   useEffect(() => {
@@ -213,6 +316,9 @@ export default function WidgetFrame() {
   const handleSendMessage = async () => {
     const text = inputValue.trim();
     if (!text) return;
+
+    // Reset idle timeout on user activity
+    resetIdleTimeout();
 
     setInputValue("");
 
@@ -868,6 +974,35 @@ export default function WidgetFrame() {
             text-decoration: underline;
           }
           
+          .idle-overlay {
+            padding: 20px;
+            background: #F8F8F8;
+            border-top: 1px solid #E8E8E8;
+            text-align: center;
+          }
+          
+          .idle-overlay p {
+            color: #616061;
+            font-size: 14px;
+            margin-bottom: 12px;
+          }
+          
+          .continue-button {
+            background: ${data.config.accentColor};
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.15s ease;
+          }
+          
+          .continue-button:hover {
+            opacity: 0.9;
+          }
+          
           .connection-status {
             position: absolute;
             top: 60px;
@@ -967,28 +1102,37 @@ export default function WidgetFrame() {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="composer">
-            <div className="composer-input-wrapper">
-              <textarea
-                className="composer-input"
-                placeholder="Send a message..."
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                rows={1}
-              />
-              <button
-                className="send-button"
-                onClick={handleSendMessage}
-                disabled={!inputValue.trim()}
-                aria-label="Send message"
-              >
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                </svg>
+          {isIdle ? (
+            <div className="idle-overlay">
+              <p>Chat paused due to inactivity</p>
+              <button className="continue-button" onClick={handleContinueChat}>
+                Continue Chat
               </button>
             </div>
-          </div>
+          ) : (
+            <div className="composer">
+              <div className="composer-input-wrapper">
+                <textarea
+                  className="composer-input"
+                  placeholder="Send a message..."
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  rows={1}
+                />
+                <button
+                  className="send-button"
+                  onClick={handleSendMessage}
+                  disabled={!inputValue.trim()}
+                  aria-label="Send message"
+                >
+                  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="powered-by">
             Powered by <a href="#">Support Widget</a>
