@@ -112,6 +112,14 @@ export default function WidgetFrame() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [visitorInfo, setVisitorInfo] = useState({
+    name: data.name || "",
+    email: data.email || "",
+  });
+  const [showMissingInfoForm, setShowMissingInfoForm] = useState(
+    !data.name || !data.email
+  );
+
   // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -193,6 +201,13 @@ export default function WidgetFrame() {
     window.parent.postMessage({ type: "sw:close" }, "*");
   };
 
+  const handleInfoSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (visitorInfo.name && visitorInfo.email) {
+      setShowMissingInfoForm(false);
+    }
+  };
+
   const handleSendMessage = async () => {
     const text = inputValue.trim();
     if (!text) return;
@@ -222,9 +237,9 @@ export default function WidgetFrame() {
             accountId: data.accountId,
             visitorId: data.visitorId,
             message: text,
-            email: data.email,
-            name: data.name,
-            metadata: data.metadata,
+            email: visitorInfo.email,
+            name: visitorInfo.name,
+            metadata: data.metadata || {},
           }),
         });
 
@@ -315,6 +330,218 @@ export default function WidgetFrame() {
     } else {
       groupedMessages[groupedMessages.length - 1].messages.push(msg);
     }
+  }
+
+  if (showMissingInfoForm && !ticketId) {
+    return (
+      <html lang="en">
+        <head>
+          <meta charSet="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>Support</title>
+          <style
+            dangerouslySetInnerHTML={{
+              __html: `
+            * {
+              box-sizing: border-box;
+              margin: 0;
+              padding: 0;
+            }
+            
+            html, body, #root {
+              height: 100%;
+              overflow: hidden;
+            }
+            
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              font-size: 15px;
+              line-height: 1.4;
+              color: #1D1C1D;
+              background: #fff;
+            }
+            
+            .widget-container {
+              display: flex;
+              flex-direction: column;
+              height: 100%;
+            }
+            
+            .widget-header {
+              background: linear-gradient(135deg, ${data.config.primaryColor} 0%, ${data.config.primaryColor}dd 100%);
+              color: white;
+              padding: 16px 20px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              flex-shrink: 0;
+            }
+            
+            .widget-header h1 {
+              font-size: 17px;
+              font-weight: 600;
+              margin: 0;
+            }
+            
+            .close-button {
+              background: rgba(255, 255, 255, 0.2);
+              border: none;
+              border-radius: 50%;
+              width: 32px;
+              height: 32px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              cursor: pointer;
+              transition: background 0.15s ease;
+            }
+            
+            .close-button:hover {
+              background: rgba(255, 255, 255, 0.3);
+            }
+            
+            .close-button svg {
+              width: 18px;
+              height: 18px;
+              fill: white;
+            }
+
+            .form-container {
+              padding: 24px;
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+            }
+
+            .form-title {
+              font-size: 18px;
+              font-weight: 600;
+              margin-bottom: 8px;
+              text-align: center;
+            }
+
+            .form-subtitle {
+              font-size: 14px;
+              color: #616061;
+              margin-bottom: 24px;
+              text-align: center;
+            }
+
+            .form-group {
+              margin-bottom: 16px;
+            }
+
+            .form-label {
+              display: block;
+              font-size: 13px;
+              font-weight: 500;
+              margin-bottom: 6px;
+              color: #1D1C1D;
+            }
+
+            .form-input {
+              width: 100%;
+              padding: 10px 12px;
+              border: 1px solid #E8E8E8;
+              border-radius: 8px;
+              font-size: 15px;
+              transition: border-color 0.15s ease;
+            }
+
+            .form-input:focus {
+              outline: none;
+              border-color: ${data.config.accentColor};
+            }
+
+            .submit-button {
+              width: 100%;
+              padding: 12px;
+              background: ${data.config.accentColor};
+              color: white;
+              border: none;
+              border-radius: 8px;
+              font-size: 15px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: opacity 0.15s ease;
+              margin-top: 8px;
+            }
+
+            .submit-button:hover {
+              opacity: 0.9;
+            }
+
+            .submit-button:disabled {
+              opacity: 0.5;
+              cursor: not-allowed;
+            }
+          `,
+            }}
+          />
+        </head>
+        <body>
+          <div className="widget-container">
+            <header className="widget-header">
+              <h1>{data.config.companyName}</h1>
+              <button
+                className="close-button"
+                onClick={handleClose}
+                aria-label="Close"
+              >
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                </svg>
+              </button>
+            </header>
+
+            <div className="form-container">
+              <h2 className="form-title">Welcome! 👋</h2>
+              <p className="form-subtitle">
+                Please introduce yourself to start chatting.
+              </p>
+              <form onSubmit={handleInfoSubmit}>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="name">
+                    Name
+                  </label>
+                  <input
+                    id="name"
+                    type="text"
+                    className="form-input"
+                    value={visitorInfo.name}
+                    onChange={(e) =>
+                      setVisitorInfo((prev) => ({ ...prev, name: e.target.value }))
+                    }
+                    placeholder="Your name"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="email">
+                    Email
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    className="form-input"
+                    value={visitorInfo.email}
+                    onChange={(e) =>
+                      setVisitorInfo((prev) => ({ ...prev, email: e.target.value }))
+                    }
+                    placeholder="name@example.com"
+                    required
+                  />
+                </div>
+                <button type="submit" className="submit-button">
+                  Start Chat
+                </button>
+              </form>
+            </div>
+          </div>
+        </body>
+      </html>
+    );
   }
 
   return (
