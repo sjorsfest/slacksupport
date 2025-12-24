@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLoaderData, useSearchParams } from 'react-router';
+import { useLoaderData, useSearchParams, useFetcher } from 'react-router';
 import type { LoaderFunctionArgs } from 'react-router';
 import { requireUser } from '~/lib/auth.server';
 import { prisma } from '~/lib/db.server';
@@ -39,14 +39,20 @@ export default function SlackIntegration() {
   const { accountId, installation, selectedChannel, baseUrl } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
   const [channels, setChannels] = useState<Channel[]>([]);
-  const [loadingChannels, setLoadingChannels] = useState(false);
   const [selected, setSelected] = useState(selectedChannel);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const channelsFetcher = useFetcher();
+  const selectFetcher = useFetcher();
+  const testFetcher = useFetcher();
+  const disconnectFetcher = useFetcher();
 
   const success = searchParams.get('success') === 'true';
   const error = searchParams.get('error');
+
+  const loadingChannels = channelsFetcher.state !== 'idle';
+  const isSaving = selectFetcher.state !== 'idle';
+  const isTesting = testFetcher.state !== 'idle';
 
   useEffect(() => {
     if (installation) {
@@ -54,62 +60,55 @@ export default function SlackIntegration() {
     }
   }, [installation]);
 
-  const loadChannels = async () => {
-    setLoadingChannels(true);
-    try {
-      const response = await fetch('/api/slack/channels');
-      const data = await response.json();
+  useEffect(() => {
+    if (channelsFetcher.state === 'idle' && channelsFetcher.data) {
+      const data = channelsFetcher.data as { channels: Channel[] };
       setChannels(data.channels || []);
-    } catch (error) {
-      console.error('Failed to load channels:', error);
-    } finally {
-      setLoadingChannels(false);
     }
+  }, [channelsFetcher.state, channelsFetcher.data]);
+
+  useEffect(() => {
+    if (testFetcher.state === 'idle' && testFetcher.data) {
+      const data = testFetcher.data as { error?: string };
+      if (data.error) {
+        setTestResult({ success: false, message: data.error || 'Failed to send test message' });
+      } else {
+        setTestResult({ success: true, message: 'Test message sent successfully!' });
+      }
+    }
+  }, [testFetcher.state, testFetcher.data]);
+
+  useEffect(() => {
+    if (disconnectFetcher.state === 'idle' && disconnectFetcher.data) {
+      window.location.reload();
+    }
+  }, [disconnectFetcher.state, disconnectFetcher.data]);
+
+  const loadChannels = () => {
+    channelsFetcher.load('/api/slack/channels');
   };
 
-  const handleSelectChannel = async (channelId: string) => {
+  const handleSelectChannel = (channelId: string) => {
     const channel = channels.find((c) => c.id === channelId);
     if (!channel) return;
 
-    setIsSaving(true);
-    try {
-      await fetch('/api/slack/select-channel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channelId: channel.id, channelName: channel.name }),
-      });
-      setSelected({ id: channel.id, name: channel.name });
-    } catch (error) {
-      console.error('Failed to select channel:', error);
-    } finally {
-      setIsSaving(false);
-    }
+    setSelected({ id: channel.id, name: channel.name });
+    selectFetcher.submit(
+      { channelId: channel.id, channelName: channel.name },
+      { method: 'POST', action: '/api/slack/select-channel', encType: 'application/json' }
+    );
   };
 
-  const handleTestPost = async () => {
-    setIsTesting(true);
+  const handleTestPost = () => {
     setTestResult(null);
-    try {
-      const response = await fetch('/api/slack/test-post', { method: 'POST' });
-      const data = await response.json();
-      if (response.ok) {
-        setTestResult({ success: true, message: 'Test message sent successfully!' });
-      } else {
-        setTestResult({ success: false, message: data.error || 'Failed to send test message' });
-      }
-    } catch (error) {
-      setTestResult({ success: false, message: 'Failed to send test message' });
-    } finally {
-      setIsTesting(false);
-    }
+    testFetcher.submit(null, { method: 'POST', action: '/api/slack/test-post' });
   };
 
-  const handleDisconnect = async () => {
+  const handleDisconnect = () => {
     if (!confirm('Are you sure you want to disconnect Slack? This will stop all ticket notifications.')) {
       return;
     }
-    await fetch('/api/slack/disconnect', { method: 'POST' });
-    window.location.reload();
+    disconnectFetcher.submit(null, { method: 'POST', action: '/api/slack/disconnect' });
   };
 
   return (

@@ -1,4 +1,4 @@
-import { Link, Outlet, useLocation, useLoaderData, useNavigate } from 'react-router';
+import { Link, Outlet, useLocation, useLoaderData, useFetcher } from 'react-router';
 import type { LoaderFunctionArgs } from 'react-router';
 import { requireUser, logout } from '~/lib/auth.server';
 import { prisma } from '~/lib/db.server';
@@ -81,11 +81,10 @@ function WebhookIcon({ className }: { className?: string }) {
 export default function DashboardLayout() {
   const { user, account } = useLoaderData<typeof loader>();
   const location = useLocation();
-  const navigate = useNavigate();
+  const fetcher = useFetcher();
 
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    navigate('/login');
+  const handleLogout = () => {
+    fetcher.submit(null, { method: 'POST', action: '/api/auth/logout' });
   };
 
   return (

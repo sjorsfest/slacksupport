@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLoaderData } from 'react-router';
+import { useLoaderData, useFetcher } from 'react-router';
 import type { LoaderFunctionArgs } from 'react-router';
 import { requireUser } from '~/lib/auth.server';
 import { prisma } from '~/lib/db.server';
@@ -43,78 +43,78 @@ export default function WebhooksSettings() {
   const { endpoints } = useLoaderData<typeof loader>();
   const [webhooks, setWebhooks] = useState<Webhook[]>(endpoints as Webhook[]);
   const [newUrl, setNewUrl] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
   const [showSecret, setShowSecret] = useState<string | null>(null);
   const [selectedWebhook, setSelectedWebhook] = useState<string | null>(null);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
-  const [loadingDeliveries, setLoadingDeliveries] = useState(false);
 
-  const handleCreate = async () => {
-    if (!newUrl.trim()) return;
-    setIsCreating(true);
+  const createFetcher = useFetcher();
+  const toggleFetcher = useFetcher();
+  const deleteFetcher = useFetcher();
+  const rotateFetcher = useFetcher();
+  const deliveriesFetcher = useFetcher();
 
-    try {
-      const response = await fetch('/api/webhooks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: newUrl }),
-      });
+  const isCreating = createFetcher.state !== 'idle';
+  const loadingDeliveries = deliveriesFetcher.state !== 'idle';
 
-      if (response.ok) {
-        const { endpoint } = await response.json();
+  useEffect(() => {
+    if (createFetcher.state === 'idle' && createFetcher.data) {
+      const { endpoint } = createFetcher.data as { endpoint: Webhook };
+      if (endpoint) {
         setWebhooks([{ ...endpoint, _count: { deliveries: 0 } }, ...webhooks]);
         setNewUrl('');
         setShowSecret(endpoint.id);
       }
-    } catch (error) {
-      console.error('Failed to create webhook:', error);
-    } finally {
-      setIsCreating(false);
     }
+  }, [createFetcher.state, createFetcher.data]);
+
+  useEffect(() => {
+    if (rotateFetcher.state === 'idle' && rotateFetcher.data) {
+      const { secret, id } = rotateFetcher.data as { secret: string; id: string };
+      if (secret && id) {
+        setWebhooks(webhooks.map((w) => (w.id === id ? { ...w, secret } : w)));
+        setShowSecret(id);
+      }
+    }
+  }, [rotateFetcher.state, rotateFetcher.data]);
+
+  useEffect(() => {
+    if (deliveriesFetcher.state === 'idle' && deliveriesFetcher.data) {
+      const data = deliveriesFetcher.data as { deliveries: Delivery[] };
+      setDeliveries(data.deliveries || []);
+    }
+  }, [deliveriesFetcher.state, deliveriesFetcher.data]);
+
+  const handleCreate = () => {
+    if (!newUrl.trim()) return;
+    createFetcher.submit(
+      { url: newUrl },
+      { method: 'POST', action: '/api/webhooks', encType: 'application/json' }
+    );
   };
 
-  const handleToggle = async (id: string, enabled: boolean) => {
+  const handleToggle = (id: string, enabled: boolean) => {
     setWebhooks(webhooks.map((w) => (w.id === id ? { ...w, enabled } : w)));
-
-    await fetch(`/api/webhooks/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled }),
-    });
+    toggleFetcher.submit(
+      { enabled },
+      { method: 'PUT', action: `/api/webhooks/${id}`, encType: 'application/json' }
+    );
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     if (!confirm('Are you sure you want to delete this webhook?')) return;
-
-    await fetch(`/api/webhooks/${id}`, { method: 'DELETE' });
     setWebhooks(webhooks.filter((w) => w.id !== id));
     if (selectedWebhook === id) setSelectedWebhook(null);
+    deleteFetcher.submit(null, { method: 'DELETE', action: `/api/webhooks/${id}` });
   };
 
-  const handleRotateSecret = async (id: string) => {
+  const handleRotateSecret = (id: string) => {
     if (!confirm('Are you sure? This will invalidate the current secret.')) return;
-
-    const response = await fetch(`/api/webhooks/${id}/rotate-secret`, { method: 'POST' });
-    if (response.ok) {
-      const { secret } = await response.json();
-      setWebhooks(webhooks.map((w) => (w.id === id ? { ...w, secret } : w)));
-      setShowSecret(id);
-    }
+    rotateFetcher.submit(null, { method: 'POST', action: `/api/webhooks/${id}/rotate-secret` });
   };
 
-  const loadDeliveries = async (webhookId: string) => {
+  const loadDeliveries = (webhookId: string) => {
     setSelectedWebhook(webhookId);
-    setLoadingDeliveries(true);
-
-    try {
-      const response = await fetch(`/api/webhooks/${webhookId}/deliveries`);
-      const data = await response.json();
-      setDeliveries(data.deliveries || []);
-    } catch (error) {
-      console.error('Failed to load deliveries:', error);
-    } finally {
-      setLoadingDeliveries(false);
-    }
+    deliveriesFetcher.load(`/api/webhooks/${webhookId}/deliveries`);
   };
 
   return (

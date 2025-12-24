@@ -1,41 +1,29 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useFetcher } from "react-router";
 
 export default function Signup() {
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const fetcher = useFetcher();
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
+  const isLoading = fetcher.state !== "idle";
 
-    const formData = new FormData(e.currentTarget);
-
-    try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: formData.get("email"),
-          password: formData.get("password"),
-          name: formData.get("name"),
-          companyName: formData.get("companyName"),
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Signup failed");
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data) {
+      const data = fetcher.data as { error?: string };
+      if (data.error) {
+        setError(data.error);
+      } else {
+        navigate("/onboarding");
       }
-
-      navigate("/onboarding");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Signup failed");
-    } finally {
-      setIsLoading(false);
     }
+  }, [fetcher.state, fetcher.data, navigate]);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    const formData = new FormData(e.currentTarget);
+    fetcher.submit(formData, { method: "POST", action: "/api/auth/signup" });
   };
 
   return (

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, useLoaderData } from 'react-router';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLoaderData, useFetcher } from 'react-router';
 import type { LoaderFunctionArgs } from 'react-router';
 import { requireUser } from '~/lib/auth.server';
 import { prisma } from '~/lib/db.server';
@@ -24,7 +24,15 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const [domains, setDomains] = useState<string[]>(account?.allowedDomains || []);
   const [newDomain, setNewDomain] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+  const fetcher = useFetcher();
+
+  const isSaving = fetcher.state !== 'idle';
+
+  useEffect(() => {
+    if (fetcher.state === 'idle' && fetcher.data) {
+      navigate('/integrations/slack');
+    }
+  }, [fetcher.state, fetcher.data, navigate]);
 
   const addDomain = () => {
     const domain = newDomain.trim().toLowerCase();
@@ -38,20 +46,15 @@ export default function Onboarding() {
     setDomains(domains.filter((d) => d !== domain));
   };
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      await fetch('/api/account/allowed-domains', {
+  const handleSave = () => {
+    fetcher.submit(
+      { domains },
+      {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domains }),
-      });
-      navigate('/integrations/slack');
-    } catch (error) {
-      console.error('Failed to save domains:', error);
-    } finally {
-      setIsSaving(false);
-    }
+        action: '/api/account/allowed-domains',
+        encType: 'application/json',
+      }
+    );
   };
 
   return (

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Form, Link, useNavigate } from "react-router";
+import { useState, useEffect } from "react";
+import { Form, Link, useNavigate, useFetcher } from "react-router";
 import type { ActionFunctionArgs } from "react-router";
 import { login } from "~/lib/auth.server";
 import { loginSchema } from "~/types/schemas";
@@ -30,37 +30,27 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function Login() {
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const fetcher = useFetcher();
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
+  const isLoading = fetcher.state !== "idle";
 
-    const formData = new FormData(e.currentTarget);
-
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: formData.get("email"),
-          password: formData.get("password"),
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Login failed");
+  useEffect(() => {
+    if (fetcher.state === "idle" && fetcher.data) {
+      const data = fetcher.data as { error?: string };
+      if (data.error) {
+        setError(data.error);
+      } else {
+        navigate("/tickets");
       }
-
-      navigate("/tickets");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
-    } finally {
-      setIsLoading(false);
     }
+  }, [fetcher.state, fetcher.data, navigate]);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    const formData = new FormData(e.currentTarget);
+    fetcher.submit(formData, { method: "POST", action: "/api/auth/login" });
   };
 
   return (

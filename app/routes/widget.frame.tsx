@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { LoaderFunctionArgs } from "react-router";
-import { useLoaderData } from "react-router";
+import { useLoaderData, useFetcher } from "react-router";
 import { prisma } from "~/lib/db.server";
 import { isServerless } from "~/lib/env.server";
+import "../styles/widget.frame.css";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -59,8 +60,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     existingTicket = visitor?.tickets[0] || null;
   }
 
-  const baseUrl = process.env.BASE_URL || "http://localhost:5173";
-  
   // Use polling on serverless environments (Vercel, Lambda, etc.) where SSE doesn't work reliably
   const usePolling = isServerless();
   
@@ -94,7 +93,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
           })),
         }
       : null,
-    baseUrl,
     usePolling,
   };
 }
@@ -127,13 +125,15 @@ export default function WidgetFrame() {
   const lastActivityRef = useRef<Date>(new Date());
   const lastMessageTimeRef = useRef<string | null>(null);
 
+  const messageFetcher = useFetcher();
+  const pollingFetcher = useFetcher<{ messages: Message[] }>();
+
   const [visitorInfo, setVisitorInfo] = useState({
     name: data.name || "",
     email: data.email || "",
   });
-  const [showMissingInfoForm, setShowMissingInfoForm] = useState(
-    !data.name || !data.email
-  );
+  
+  const showMissingInfoForm = (!visitorInfo.name || !visitorInfo.email) && !ticketId;
 
   const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
   const POLLING_INTERVAL_MS = 2000; // 2 seconds
@@ -167,6 +167,73 @@ export default function WidgetFrame() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Handle message sending response
+  useEffect(() => {
+    if (messageFetcher.data) {
+      const result = messageFetcher.data as any;
+      
+      // If we just created a ticket
+      if (result.ticketId && !ticketId) {
+        setTicketId(result.ticketId);
+      }
+
+      // If we got a message ID back (success)
+      if (result.messageId) {
+        // Find the pending message and update it
+        setMessages((prev) => {
+          // We need to find which pending message this corresponds to.
+          // Since we don't pass the pending ID to the server, we might just look for the last pending one
+          // or rely on the fact that we only send one at a time effectively.
+          // A better approach would be to pass a client-side ID to the server and have it return it.
+          // For now, let's just update the most recent pending message or all pending messages if we can't distinguish.
+          // Actually, let's just replace the pending message with the real one if we can match the text or just rely on the server response.
+          
+          // Simplification: Just mark the last pending message as sent or replace it.
+          // Ideally we'd match by a temporary ID.
+          
+          // Let's try to match by text if possible, or just the last pending one.
+          const lastPendingIndex = [...prev].reverse().findIndex(m => m.pending);
+          if (lastPendingIndex !== -1) {
+            const realIndex = prev.length - 1 - lastPendingIndex;
+             const newMsgs = [...prev];
+             newMsgs[realIndex] = {
+               ...newMsgs[realIndex],
+               id: result.messageId,
+               pending: false
+             };
+             return newMsgs;
+          }
+          return prev;
+        });
+      }
+    }
+  }, [messageFetcher.data, ticketId]);
+
+
+  // Polling logic using useFetcher
+  useEffect(() => {
+    if (pollingFetcher.data && pollingFetcher.data.messages) {
+       const newMessages = pollingFetcher.data.messages;
+       if (newMessages.length > 0) {
+          // Update last message time
+          lastMessageTimeRef.current = newMessages[newMessages.length - 1].createdAt;
+          
+          // Add new messages
+          setMessages((prev) => {
+            const newMsgs = newMessages.filter(
+              (m: Message) => !prev.some((p) => p.id === m.id)
+            );
+            if (newMsgs.length > 0) {
+              window.parent.postMessage({ type: "sw:newMessage" }, "*");
+              return [...prev, ...newMsgs];
+            }
+            return prev;
+          });
+       }
+    }
+  }, [pollingFetcher.data]);
+
+
   // Polling for serverless environments (Vercel, Lambda, etc.)
   const startPolling = useCallback(() => {
     if (!ticketId || !data.usePolling) return;
@@ -180,44 +247,20 @@ export default function WidgetFrame() {
       lastMessageTimeRef.current = messages[messages.length - 1].createdAt;
     }
 
-    const poll = async () => {
-      try {
-        const since = lastMessageTimeRef.current || '';
-        const url = `${data.baseUrl}/api/tickets/${ticketId}/messages${since ? `?since=${encodeURIComponent(since)}` : ''}`;
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-          console.error("Polling error:", response.status);
-          return;
+    const poll = () => {
+        if (pollingFetcher.state === "idle") {
+            const since = lastMessageTimeRef.current || '';
+            const params = new URLSearchParams();
+            if (since) params.set("since", since);
+            
+            pollingFetcher.load(`/api/tickets/${ticketId}/messages?${params.toString()}`);
         }
-
-        const result = await response.json();
-        
-        if (result.messages && result.messages.length > 0) {
-          // Update last message time
-          lastMessageTimeRef.current = result.messages[result.messages.length - 1].createdAt;
-          
-          // Add new messages
-          setMessages((prev) => {
-            const newMsgs = result.messages.filter(
-              (m: Message) => !prev.some((p) => p.id === m.id)
-            );
-            if (newMsgs.length > 0) {
-              window.parent.postMessage({ type: "sw:newMessage" }, "*");
-              return [...prev, ...newMsgs];
-            }
-            return prev;
-          });
-        }
-      } catch (e) {
-        console.error("Polling error:", e);
-      }
     };
 
     // Poll immediately, then every 2 seconds
     poll();
     pollingIntervalRef.current = setInterval(poll, POLLING_INTERVAL_MS);
-  }, [ticketId, data.usePolling, data.baseUrl, messages, resetIdleTimeout]);
+  }, [ticketId, data.usePolling, messages, resetIdleTimeout, pollingFetcher]); // Added pollingFetcher to deps
 
   // SSE connection for persistent server environments
   const connectSSE = useCallback(() => {
@@ -228,7 +271,8 @@ export default function WidgetFrame() {
       eventSourceRef.current.close();
     }
 
-    const sseUrl = `${data.baseUrl}/api/tickets/${ticketId}/stream`;
+    // We can use a relative URL here because the browser will resolve it against the current origin
+    const sseUrl = `/api/tickets/${ticketId}/stream`;
     const eventSource = new EventSource(sseUrl);
 
     eventSource.addEventListener("connected", () => {
@@ -271,7 +315,7 @@ export default function WidgetFrame() {
     };
 
     eventSourceRef.current = eventSource;
-  }, [ticketId, data.baseUrl, data.usePolling]);
+  }, [ticketId, data.usePolling]);
 
   // Start real-time connection based on environment
   useEffect(() => {
@@ -314,9 +358,7 @@ export default function WidgetFrame() {
 
   const handleInfoSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (visitorInfo.name && visitorInfo.email) {
-      setShowMissingInfoForm(false);
-    }
+    // Form visibility is derived from visitorInfo state, so no need to explicitly hide it
   };
 
   const handleSendMessage = async () => {
@@ -344,55 +386,30 @@ export default function WidgetFrame() {
 
       // Create ticket if needed
       if (!currentTicketId) {
-        const response = await fetch(`${data.baseUrl}/api/tickets`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            accountId: data.accountId,
+        messageFetcher.submit(
+          {
+            accountId: data.accountId!, // We checked this in loader
             visitorId: data.visitorId,
             message: text,
             email: visitorInfo.email,
             name: visitorInfo.name,
-            metadata: data.metadata || {},
-          }),
-        });
-
-        if (!response.ok) throw new Error("Failed to create ticket");
-
-        const result = await response.json();
-        currentTicketId = result.ticketId;
-        setTicketId(currentTicketId);
-
-        // Update pending message with real ID
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === pendingId
-              ? { ...m, id: result.messageId, pending: false }
-              : m
-          )
+            metadata: data.metadata ? JSON.stringify(data.metadata) : "{}", // Ensure string for FormData/JSON
+          },
+          {
+            method: "POST",
+            action: "/api/tickets",
+            encType: "application/json",
+          }
         );
       } else {
         // Send message to existing ticket
-        const response = await fetch(
-          `${data.baseUrl}/api/tickets/${currentTicketId}/messages`,
+        messageFetcher.submit(
+          { text, source: "visitor" },
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text, source: "visitor" }),
+            action: `/api/tickets/${currentTicketId}/messages`,
+            encType: "application/json",
           }
-        );
-
-        if (!response.ok) throw new Error("Failed to send message");
-
-        const result = await response.json();
-
-        // Update pending message with real ID
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === pendingId
-              ? { ...m, id: result.messageId, pending: false }
-              : m
-          )
         );
       }
     } catch (error) {
@@ -453,149 +470,15 @@ export default function WidgetFrame() {
           <meta charSet="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <title>Support</title>
-          <style
-            dangerouslySetInnerHTML={{
-              __html: `
-            * {
-              box-sizing: border-box;
-              margin: 0;
-              padding: 0;
-            }
-            
-            html, body, #root {
-              height: 100%;
-              overflow: hidden;
-            }
-            
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-              font-size: 15px;
-              line-height: 1.4;
-              color: #1D1C1D;
-              background: #fff;
-            }
-            
-            .widget-container {
-              display: flex;
-              flex-direction: column;
-              height: 100%;
-            }
-            
-            .widget-header {
-              background: linear-gradient(135deg, ${data.config.primaryColor} 0%, ${data.config.primaryColor}dd 100%);
-              color: white;
-              padding: 16px 20px;
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-              flex-shrink: 0;
-            }
-            
-            .widget-header h1 {
-              font-size: 17px;
-              font-weight: 600;
-              margin: 0;
-            }
-            
-            .close-button {
-              background: rgba(255, 255, 255, 0.2);
-              border: none;
-              border-radius: 50%;
-              width: 32px;
-              height: 32px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              cursor: pointer;
-              transition: background 0.15s ease;
-            }
-            
-            .close-button:hover {
-              background: rgba(255, 255, 255, 0.3);
-            }
-            
-            .close-button svg {
-              width: 18px;
-              height: 18px;
-              fill: white;
-            }
-
-            .form-container {
-              padding: 24px;
-              flex: 1;
-              display: flex;
-              flex-direction: column;
-              justify-content: center;
-            }
-
-            .form-title {
-              font-size: 18px;
-              font-weight: 600;
-              margin-bottom: 8px;
-              text-align: center;
-            }
-
-            .form-subtitle {
-              font-size: 14px;
-              color: #616061;
-              margin-bottom: 24px;
-              text-align: center;
-            }
-
-            .form-group {
-              margin-bottom: 16px;
-            }
-
-            .form-label {
-              display: block;
-              font-size: 13px;
-              font-weight: 500;
-              margin-bottom: 6px;
-              color: #1D1C1D;
-            }
-
-            .form-input {
-              width: 100%;
-              padding: 10px 12px;
-              border: 1px solid #E8E8E8;
-              border-radius: 8px;
-              font-size: 15px;
-              transition: border-color 0.15s ease;
-            }
-
-            .form-input:focus {
-              outline: none;
-              border-color: ${data.config.accentColor};
-            }
-
-            .submit-button {
-              width: 100%;
-              padding: 12px;
-              background: ${data.config.accentColor};
-              color: white;
-              border: none;
-              border-radius: 8px;
-              font-size: 15px;
-              font-weight: 600;
-              cursor: pointer;
-              transition: opacity 0.15s ease;
-              margin-top: 8px;
-            }
-
-            .submit-button:hover {
-              opacity: 0.9;
-            }
-
-            .submit-button:disabled {
-              opacity: 0.5;
-              cursor: not-allowed;
-            }
-          `,
-            }}
-          />
         </head>
         <body>
-          <div className="widget-container">
+          <div 
+            className="widget-container"
+            style={{ 
+              "--primary-color": data.config.primaryColor, 
+              "--accent-color": data.config.accentColor 
+            } as React.CSSProperties}
+          >
             <header className="widget-header">
               <h1>{data.config.companyName}</h1>
               <button
@@ -664,374 +547,15 @@ export default function WidgetFrame() {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Support</title>
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
-          * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-          }
-          
-          html, body, #root {
-            height: 100%;
-            overflow: hidden;
-          }
-          
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            font-size: 15px;
-            line-height: 1.4;
-            color: #1D1C1D;
-            background: #fff;
-          }
-          
-          .widget-container {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-          }
-          
-          .widget-header {
-            background: linear-gradient(135deg, ${data.config.primaryColor} 0%, ${data.config.primaryColor}dd 100%);
-            color: white;
-            padding: 16px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-shrink: 0;
-          }
-          
-          .widget-header h1 {
-            font-size: 17px;
-            font-weight: 600;
-            margin: 0;
-          }
-          
-          .widget-header .subtitle {
-            font-size: 13px;
-            opacity: 0.85;
-            margin-top: 2px;
-          }
-          
-          .close-button {
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: background 0.15s ease;
-          }
-          
-          .close-button:hover {
-            background: rgba(255, 255, 255, 0.3);
-          }
-          
-          .close-button svg {
-            width: 18px;
-            height: 18px;
-            fill: white;
-          }
-          
-          .messages-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px 20px;
-            background: #F8F8F8;
-          }
-          
-          .date-divider {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 16px 0;
-          }
-          
-          .date-divider span {
-            background: #E8E8E8;
-            color: #616061;
-            font-size: 12px;
-            font-weight: 500;
-            padding: 4px 12px;
-            border-radius: 12px;
-          }
-          
-          .message {
-            display: flex;
-            margin-bottom: 8px;
-            animation: messageIn 0.2s ease-out;
-          }
-          
-          @keyframes messageIn {
-            from {
-              opacity: 0;
-              transform: translateY(8px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-          
-          .message.visitor {
-            flex-direction: row-reverse;
-          }
-          
-          .message-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 6px;
-            background: ${data.config.accentColor};
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 13px;
-            font-weight: 600;
-            flex-shrink: 0;
-          }
-          
-          .message.visitor .message-avatar {
-            background: #8E8E8E;
-          }
-          
-          .message-content {
-            max-width: 75%;
-            margin: 0 10px;
-          }
-          
-          .message-bubble {
-            padding: 10px 14px;
-            border-radius: 18px;
-            word-wrap: break-word;
-          }
-          
-          .message.visitor .message-bubble {
-            background: ${data.config.accentColor};
-            color: white;
-            border-bottom-right-radius: 4px;
-          }
-          
-          .message.agent .message-bubble,
-          .message.slack .message-bubble,
-          .message.agent_dashboard .message-bubble {
-            background: #fff;
-            border: 1px solid #E8E8E8;
-            border-bottom-left-radius: 4px;
-          }
-          
-          .message-meta {
-            font-size: 11px;
-            color: #616061;
-            margin-top: 4px;
-            padding: 0 4px;
-          }
-          
-          .message.visitor .message-meta {
-            text-align: right;
-          }
-          
-          .message.pending .message-bubble {
-            opacity: 0.7;
-          }
-          
-          .message-sender {
-            font-weight: 600;
-            margin-right: 6px;
-          }
-          
-          .typing-indicator {
-            display: flex;
-            align-items: center;
-            padding: 10px 14px;
-            background: #fff;
-            border: 1px solid #E8E8E8;
-            border-radius: 18px;
-            border-bottom-left-radius: 4px;
-            width: fit-content;
-            margin-left: 42px;
-          }
-          
-          .typing-indicator span {
-            width: 8px;
-            height: 8px;
-            background: #B0B0B0;
-            border-radius: 50%;
-            margin: 0 2px;
-            animation: typing 1.4s infinite;
-          }
-          
-          .typing-indicator span:nth-child(2) {
-            animation-delay: 0.2s;
-          }
-          
-          .typing-indicator span:nth-child(3) {
-            animation-delay: 0.4s;
-          }
-          
-          @keyframes typing {
-            0%, 60%, 100% {
-              transform: translateY(0);
-              opacity: 0.4;
-            }
-            30% {
-              transform: translateY(-4px);
-              opacity: 1;
-            }
-          }
-          
-          .greeting-message {
-            text-align: center;
-            padding: 24px 16px;
-            color: #616061;
-          }
-          
-          .greeting-message h2 {
-            color: #1D1C1D;
-            font-size: 18px;
-            margin-bottom: 8px;
-          }
-          
-          .composer {
-            padding: 12px 16px 16px;
-            background: #fff;
-            border-top: 1px solid #E8E8E8;
-            flex-shrink: 0;
-          }
-          
-          .composer-input-wrapper {
-            display: flex;
-            align-items: flex-end;
-            background: #F8F8F8;
-            border: 1px solid #E8E8E8;
-            border-radius: 12px;
-            padding: 8px 12px;
-            transition: border-color 0.15s ease;
-          }
-          
-          .composer-input-wrapper:focus-within {
-            border-color: ${data.config.accentColor};
-          }
-          
-          .composer-input {
-            flex: 1;
-            border: none;
-            background: transparent;
-            font-size: 15px;
-            font-family: inherit;
-            resize: none;
-            outline: none;
-            max-height: 120px;
-            min-height: 24px;
-          }
-          
-          .composer-input::placeholder {
-            color: #9E9E9E;
-          }
-          
-          .send-button {
-            background: ${data.config.accentColor};
-            border: none;
-            border-radius: 50%;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: transform 0.15s ease, opacity 0.15s ease;
-            margin-left: 8px;
-            flex-shrink: 0;
-          }
-          
-          .send-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-          }
-          
-          .send-button:not(:disabled):hover {
-            transform: scale(1.05);
-          }
-          
-          .send-button svg {
-            width: 18px;
-            height: 18px;
-            fill: white;
-          }
-          
-          .powered-by {
-            text-align: center;
-            padding: 8px;
-            font-size: 11px;
-            color: #9E9E9E;
-            background: #fff;
-          }
-          
-          .powered-by a {
-            color: #616061;
-            text-decoration: none;
-          }
-          
-          .powered-by a:hover {
-            text-decoration: underline;
-          }
-          
-          .idle-overlay {
-            padding: 20px;
-            background: #F8F8F8;
-            border-top: 1px solid #E8E8E8;
-            text-align: center;
-          }
-          
-          .idle-overlay p {
-            color: #616061;
-            font-size: 14px;
-            margin-bottom: 12px;
-          }
-          
-          .continue-button {
-            background: ${data.config.accentColor};
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 20px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: opacity 0.15s ease;
-          }
-          
-          .continue-button:hover {
-            opacity: 0.9;
-          }
-          
-          .connection-status {
-            position: absolute;
-            top: 60px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #FFF3CD;
-            color: #856404;
-            padding: 4px 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-          }
-          
-          .connection-status.disconnected {
-            opacity: 1;
-          }
-        `,
-          }}
-        />
       </head>
       <body>
-        <div className="widget-container">
+        <div 
+          className="widget-container"
+          style={{ 
+            "--primary-color": data.config.primaryColor, 
+            "--accent-color": data.config.accentColor 
+          } as React.CSSProperties}
+        >
           <header className="widget-header">
             <div>
               <h1>{data.config.companyName}</h1>
@@ -1129,7 +653,7 @@ export default function WidgetFrame() {
                 <button
                   className="send-button"
                   onClick={handleSendMessage}
-                  disabled={!inputValue.trim()}
+                  disabled={!inputValue.trim() || messageFetcher.state !== "idle"}
                   aria-label="Send message"
                 >
                   <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

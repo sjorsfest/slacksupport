@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useLoaderData } from "react-router";
+import { useState, useEffect } from "react";
+import { useLoaderData, useFetcher } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
 import { requireUser } from "~/lib/auth.server";
 import { prisma } from "~/lib/db.server";
@@ -39,11 +39,23 @@ export default function WidgetSettings() {
   const [accentColor, setAccentColor] = useState(config.accentColor);
   const [greetingText, setGreetingText] = useState(config.greetingText);
   const [companyName, setCompanyName] = useState(config.companyName || "");
-  const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [domains, setDomains] = useState(allowedDomains);
   const [newDomain, setNewDomain] = useState("");
   const [copied, setCopied] = useState(false);
+
+  const configFetcher = useFetcher();
+  const domainsFetcher = useFetcher();
+
+  const isSavingConfig = configFetcher.state !== "idle";
+
+  useEffect(() => {
+    if (configFetcher.state === "idle" && configFetcher.data) {
+      setSaved(true);
+      const timer = setTimeout(() => setSaved(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [configFetcher.state, configFetcher.data]);
 
   const embedCode = `<script>
   window.SupportWidget = { accountId: "${accountId}" };
@@ -65,34 +77,20 @@ export default function WidgetSettings() {
 </script>
 <script async src="${baseUrl}/widget/loader.js"></script>`;
 
-  const handleSaveConfig = async () => {
-    setIsSaving(true);
-    try {
-      await fetch("/api/account/widget-config", {
+  const handleSaveConfig = () => {
+    configFetcher.submit(
+      {
+        primaryColor,
+        accentColor,
+        greetingText,
+        companyName: companyName || null,
+      },
+      {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          primaryColor,
-          accentColor,
-          greetingText,
-          companyName: companyName || null,
-        }),
-      });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (error) {
-      console.error("Failed to save config:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSaveDomains = async () => {
-    await fetch("/api/account/allowed-domains", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ domains }),
-    });
+        action: "/api/account/widget-config",
+        encType: "application/json",
+      }
+    );
   };
 
   const addDomain = () => {
@@ -102,22 +100,28 @@ export default function WidgetSettings() {
       setDomains(newDomains);
       setNewDomain("");
       // Auto-save
-      fetch("/api/account/allowed-domains", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domains: newDomains }),
-      });
+      domainsFetcher.submit(
+        { domains: newDomains },
+        {
+          method: "PUT",
+          action: "/api/account/allowed-domains",
+          encType: "application/json",
+        }
+      );
     }
   };
 
   const removeDomain = (domain: string) => {
     const newDomains = domains.filter((d) => d !== domain);
     setDomains(newDomains);
-    fetch("/api/account/allowed-domains", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ domains: newDomains }),
-    });
+    domainsFetcher.submit(
+      { domains: newDomains },
+      {
+        method: "PUT",
+        action: "/api/account/allowed-domains",
+        encType: "application/json",
+      }
+    );
   };
 
   const copyToClipboard = (text: string) => {
@@ -213,10 +217,10 @@ export default function WidgetSettings() {
 
               <button
                 onClick={handleSaveConfig}
-                disabled={isSaving}
+                disabled={isSavingConfig}
                 className="w-full py-2.5 bg-[#4A154B] text-white font-medium rounded-lg hover:bg-[#3D1141] transition-colors disabled:opacity-50"
               >
-                {saved ? "✓ Saved!" : isSaving ? "Saving..." : "Save Changes"}
+                {saved ? "✓ Saved!" : isSavingConfig ? "Saving..." : "Save Changes"}
               </button>
             </div>
           </div>
