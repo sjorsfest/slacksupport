@@ -3,6 +3,7 @@ import { prisma } from '~/lib/db.server';
 import { requireUser } from '~/lib/auth.server';
 import { listSlackChannels, joinSlackChannel, postToSlack } from '~/lib/slack.server';
 import { selectChannelSchema } from '~/types/schemas';
+import { parseRequest } from '~/lib/request.server';
 
 /**
  * GET /api/slack/channels - List available channels
@@ -55,8 +56,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   try {
     if (path === 'select-channel') {
-      const body = await request.json();
-      const data = selectChannelSchema.parse(body);
+      const data = await parseRequest(request, selectChannelSchema);
 
       // Verify Slack is connected
       const installation = await prisma.slackInstallation.findUnique({

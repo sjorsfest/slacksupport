@@ -26,6 +26,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return new Response('Account not found', { status: 404 });
   }
 
+  console.log('Slack install for account:', accountId);
+
   // Generate state token for CSRF protection
   const state = generateSecureToken();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
@@ -38,7 +40,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       expiresAt,
     },
   });
-
+  console.log('Slack install state created:', state);
   // Redirect to Slack authorization
   const authUrl = getSlackAuthUrl(state);
   return redirect(authUrl);

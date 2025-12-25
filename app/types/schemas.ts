@@ -19,6 +19,10 @@ export const updateAccountSchema = z.object({
   allowedDomains: z.array(z.string()).optional(),
 });
 
+export const updateAllowedDomainsSchema = z.object({
+  domains: z.array(z.string()),
+});
+
 // Widget config schemas
 export const updateWidgetConfigSchema = z.object({
   primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format').optional(),

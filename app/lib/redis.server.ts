@@ -1,5 +1,6 @@
 import { Queue, Worker, Job } from 'bullmq';
 import Redis from 'ioredis';
+import { settings } from './settings.server';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -7,7 +8,7 @@ declare global {
 }
 
 function getRedisUrl(): string {
-  return process.env.REDIS_URL || 'redis://localhost:6379';
+  return settings.REDIS_URL;
 }
 
 // Singleton Redis connection for general use
@@ -15,7 +16,7 @@ export const redis = globalThis.__redis ?? new Redis(getRedisUrl(), {
   maxRetriesPerRequest: null,
 });
 
-if (process.env.NODE_ENV !== 'production') {
+if (settings.NODE_ENV !== 'production') {
   globalThis.__redis = redis;
 }
 

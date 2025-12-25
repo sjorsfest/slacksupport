@@ -1,7 +1,8 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
 import { prisma } from '~/lib/db.server';
 import { requireUser } from '~/lib/auth.server';
-import { updateAccountSchema, updateWidgetConfigSchema } from '~/types/schemas';
+import { updateAccountSchema, updateWidgetConfigSchema, updateAllowedDomainsSchema } from '~/types/schemas';
+import { parseRequest } from '~/lib/request.server';
 
 /**
  * GET /api/account - Get account info
@@ -68,8 +69,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   try {
     if (path === '' || path === 'info') {
-      const body = await request.json();
-      const data = updateAccountSchema.parse(body);
+      const data = await parseRequest(request, updateAccountSchema);
 
       const account = await prisma.account.update({
         where: { id: user.accountId },
@@ -80,8 +80,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
 
     if (path === 'widget-config') {
-      const body = await request.json();
-      const data = updateWidgetConfigSchema.parse(body);
+      const data = await parseRequest(request, updateWidgetConfigSchema);
 
       const config = await prisma.widgetConfig.upsert({
         where: { accountId: user.accountId },
@@ -96,12 +95,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
 
     if (path === 'allowed-domains') {
-      const body = await request.json();
-      const { domains } = body as { domains: string[] };
-
-      if (!Array.isArray(domains)) {
-        return Response.json({ error: 'domains must be an array' }, { status: 400 });
-      }
+      const { domains } = await parseRequest(request, updateAllowedDomainsSchema);
 
       const account = await prisma.account.update({
         where: { id: user.accountId },

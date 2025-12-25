@@ -5,6 +5,7 @@ import { TicketStatus } from '@prisma/client';
 import { prisma } from './db.server';
 import { encrypt, decrypt } from './crypto.server';
 
+
 const SLACK_SIGNING_SECRET = process.env.SLACK_SIGNING_SECRET || '';
 const SLACK_CLIENT_ID = process.env.SLACK_CLIENT_ID || '';
 const SLACK_CLIENT_SECRET = process.env.SLACK_CLIENT_SECRET || '';
@@ -70,6 +71,7 @@ export function getSlackAuthUrl(state: string): string {
     redirect_uri: `${BASE_URL}/slack/oauth/callback`,
     state,
   });
+  console.log('Slack auth URL:', params);
   return `https://slack.com/oauth/v2/authorize?${params}`;
 }
 
@@ -89,6 +91,7 @@ export async function exchangeSlackCode(code: string): Promise<{
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
     },
+    
     body: new URLSearchParams({
       client_id: SLACK_CLIENT_ID,
       client_secret: SLACK_CLIENT_SECRET,
@@ -96,6 +99,7 @@ export async function exchangeSlackCode(code: string): Promise<{
       redirect_uri: `${BASE_URL}/slack/oauth/callback`,
     }),
   });
+  
 
   return response.json();
 }

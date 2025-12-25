@@ -2,6 +2,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
 import { prisma } from '~/lib/db.server';
 import { requireUser } from '~/lib/auth.server';
 import { createWebhookSchema, updateWebhookSchema } from '~/types/schemas';
+import { parseRequest } from '~/lib/request.server';
 import { createWebhookEndpoint, rotateWebhookSecret, getDeliveryHistory } from '~/lib/webhook.server';
 
 /**
@@ -93,8 +94,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   // Create webhook
   if (path === '' && request.method === 'POST') {
     try {
-      const body = await request.json();
-      const data = createWebhookSchema.parse(body);
+      const data = await parseRequest(request, createWebhookSchema);
 
       const endpoint = await createWebhookEndpoint(user.accountId, data.url);
 
@@ -113,8 +113,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const webhookId = updateMatch[1];
 
     try {
-      const body = await request.json();
-      const data = updateWebhookSchema.parse(body);
+      const data = await parseRequest(request, updateWebhookSchema);
 
       const endpoint = await prisma.webhookEndpoint.findFirst({
         where: { id: webhookId, accountId: user.accountId },

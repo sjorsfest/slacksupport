@@ -5,6 +5,7 @@
   "scripts": {
     "build": "react-router build",
     "dev": "tsx watch server.ts",
+    "expose": "ngrok http 5173",
     "start": "react-router-serve ./build/server/index.js",
     "start:custom": "node --import tsx server.ts",
     "typecheck": "react-router typegen && tsc",

@@ -12,7 +12,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     throw new Response('Not found', { status: 404 });
   }
 
-
   const ticket = await prisma.ticket.findFirst({
     where: { id: ticketId, accountId: user.accountId },
     include: {

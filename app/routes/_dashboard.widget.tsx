@@ -3,6 +3,7 @@ import { useLoaderData, useFetcher } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
 import { requireUser } from "~/lib/auth.server";
 import { prisma } from "~/lib/db.server";
+import { settings } from "~/lib/settings.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -17,7 +18,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }),
   ]);
 
-  const baseUrl = process.env.BASE_URL || "http://localhost:5173";
+  const baseUrl = settings.BASE_URL;
 
   return {
     accountId: user.accountId,

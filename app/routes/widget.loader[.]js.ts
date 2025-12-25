@@ -1,6 +1,7 @@
 import type { LoaderFunctionArgs } from "react-router";
+import { settings } from "~/lib/settings.server";
 
-const BASE_URL = process.env.BASE_URL || "http://localhost:5173";
+const BASE_URL = settings.BASE_URL;
 
 /**
  * GET /widget/loader.js

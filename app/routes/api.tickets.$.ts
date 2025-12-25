@@ -2,6 +2,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
 import { prisma } from '~/lib/db.server';
 import { requireUser, getCurrentUser } from '~/lib/auth.server';
 import { createTicketSchema, createMessageSchema, updateTicketSchema, ticketFiltersSchema } from '~/types/schemas';
+import { parseRequest } from '~/lib/request.server';
 import { createTicketInSlack, postToSlack } from '~/lib/slack.server';
 import { publishTicketMessage } from '~/lib/redis.server';
 import { triggerWebhooks } from '~/lib/webhook.server';
@@ -104,8 +105,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   // Create ticket (from widget)
   if (path === '' && request.method === 'POST') {
     try {
-      const body = await request.json();
-      const data = createTicketSchema.parse(body);
+      const data = await parseRequest(request, createTicketSchema);
 
       // Validate origin/domain
       const origin = request.headers.get('origin');
@@ -246,8 +246,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const ticketId = messageMatch[1];
 
     try {
-      const body = await request.json();
-      const data = createMessageSchema.parse(body);
+      const data = await parseRequest(request, createMessageSchema);
 
       // Check if this is from widget or dashboard
       const user = await getCurrentUser(request);
@@ -344,8 +343,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     try {
       const user = await requireUser(request);
-      const body = await request.json();
-      const data = updateTicketSchema.parse(body);
+      const data = await parseRequest(request, updateTicketSchema);
 
       const ticket = await prisma.ticket.findFirst({
         where: { id: ticketId, accountId: user.accountId },

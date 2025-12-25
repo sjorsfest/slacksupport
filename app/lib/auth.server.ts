@@ -2,8 +2,9 @@ import { createCookieSessionStorage, redirect } from 'react-router';
 import bcrypt from 'bcryptjs';
 import { prisma } from './db.server';
 import { generateSecureToken } from './crypto.server';
+import { settings } from './settings.server';
 
-const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-secret-change-in-production';
+const SESSION_SECRET = settings.SESSION_SECRET;
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 // Session storage using cookies
@@ -14,7 +15,7 @@ const sessionStorage = createCookieSessionStorage({
     path: '/',
     sameSite: 'lax',
     secrets: [SESSION_SECRET],
-    secure: process.env.NODE_ENV === 'production',
+    secure: settings.NODE_ENV === 'production',
     maxAge: SESSION_MAX_AGE,
   },
 });

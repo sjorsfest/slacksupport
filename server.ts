@@ -1,3 +1,4 @@
+import { settings } from './app/lib/settings.server';
 import type { ServerBuild } from 'react-router';
 import { createServer } from 'http';
 import { createRequestHandler } from '@react-router/express';
@@ -5,7 +6,7 @@ import express from 'express';
 import { initializeWebSocketServer } from './app/lib/ws.server';
 import { startAllWorkers } from './app/jobs';
 
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = settings.NODE_ENV === 'production';
 const BUILD_PATH = './build/server/index.js';
 
 async function start() {
@@ -21,7 +22,7 @@ async function start() {
     app.use(express.static('build/client'));
     
     const build = await import(BUILD_PATH);
-    app.all('*', createRequestHandler({ build }));
+    app.use(createRequestHandler({ build }));
   } else {
     // Development: use Vite's dev server middleware
     const { createServer: createViteServer } = await import('vite');
@@ -33,7 +34,7 @@ async function start() {
     app.use(vite.middlewares);
     
     // Handle React Router requests through Vite
-    app.all('*', async (req, res, next) => {
+    app.use(async (req, res, next) => {
       try {
         const build = await vite.ssrLoadModule('virtual:react-router/server-build') as unknown as ServerBuild;
         const handler = createRequestHandler({ build });
@@ -53,7 +54,7 @@ async function start() {
   console.log('✅ WebSocket server initialized');
 
   // Start listening
-  const port = Number(process.env.PORT) || (isProduction ? 3000 : 5173);
+  const port = settings.PORT;
   server.listen(port, () => {
     console.log(`🚀 Server running on http://localhost:${port}`);
   });

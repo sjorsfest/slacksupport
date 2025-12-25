@@ -1,6 +1,7 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
 import { signup, login, logout, getCurrentUser } from '~/lib/auth.server';
 import { signupSchema, loginSchema } from '~/types/schemas';
+import { parseRequest } from '~/lib/request.server';
 
 /**
  * POST /api/auth/signup
@@ -31,15 +32,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   try {
     if (path === 'signup') {
-      const body = await request.json();
-      const data = signupSchema.parse(body);
+      const data = await parseRequest(request, signupSchema);
       const { user, headers } = await signup(data);
       return Response.json({ user }, { headers });
     }
 
     if (path === 'login') {
-      const body = await request.json();
-      const data = loginSchema.parse(body);
+      const data = await parseRequest(request, loginSchema);
       const { user, headers } = await login(data.email, data.password);
       return Response.json({ user }, { headers });
     }

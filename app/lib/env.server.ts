@@ -1,3 +1,5 @@
+import { settings } from './settings.server';
+
 /**
  * Serverless environment detection utilities.
  * Auto-detects various serverless platforms without manual configuration.
@@ -9,11 +11,11 @@
  */
 export function isServerless(): boolean {
   return Boolean(
-    process.env.VERCEL ||           // Vercel
-    process.env.AWS_LAMBDA_FUNCTION_NAME ||  // AWS Lambda
-    process.env.NETLIFY ||          // Netlify
-    process.env.CF_PAGES ||         // Cloudflare Pages
-    process.env.SERVERLESS_MODE     // Manual override
+    settings.VERCEL ||           // Vercel
+    settings.AWS_LAMBDA_FUNCTION_NAME ||  // AWS Lambda
+    settings.NETLIFY ||          // Netlify
+    settings.CF_PAGES ||         // Cloudflare Pages
+    settings.SERVERLESS_MODE     // Manual override
   );
 }
 
@@ -29,10 +31,10 @@ export function useWorkers(): boolean {
  * Get the current deployment environment name for logging.
  */
 export function getDeploymentEnvironment(): string {
-  if (process.env.VERCEL) return 'Vercel';
-  if (process.env.AWS_LAMBDA_FUNCTION_NAME) return 'AWS Lambda';
-  if (process.env.NETLIFY) return 'Netlify';
-  if (process.env.CF_PAGES) return 'Cloudflare Pages';
-  if (process.env.SERVERLESS_MODE) return 'Serverless (manual)';
+  if (settings.VERCEL) return 'Vercel';
+  if (settings.AWS_LAMBDA_FUNCTION_NAME) return 'AWS Lambda';
+  if (settings.NETLIFY) return 'Netlify';
+  if (settings.CF_PAGES) return 'Cloudflare Pages';
+  if (settings.SERVERLESS_MODE) return 'Serverless (manual)';
   return 'Persistent Server';
 }

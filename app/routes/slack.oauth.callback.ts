@@ -13,6 +13,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const state = url.searchParams.get('state');
   const error = url.searchParams.get('error');
 
+
   // Handle Slack errors (e.g., user cancelled)
   if (error) {
     console.error('Slack OAuth error:', error);
