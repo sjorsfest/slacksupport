@@ -3,6 +3,9 @@ import { Link, useLoaderData, useParams } from 'react-router';
 import type { LoaderFunctionArgs } from 'react-router';
 import { requireUser } from '~/lib/auth.server';
 import { prisma } from '~/lib/db.server';
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -60,10 +63,10 @@ const statusOptions = ['OPEN', 'PENDING', 'RESOLVED', 'CLOSED'];
 const priorityOptions = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 
 const statusColors: Record<string, string> = {
-  OPEN: 'bg-blue-100 text-blue-700',
-  PENDING: 'bg-yellow-100 text-yellow-700',
-  RESOLVED: 'bg-green-100 text-green-700',
-  CLOSED: 'bg-gray-100 text-gray-600',
+  OPEN: 'bg-sky-100 text-sky-700',
+  PENDING: 'bg-amber-100 text-amber-700',
+  RESOLVED: 'bg-emerald-100 text-emerald-700',
+  CLOSED: 'bg-slate-100 text-slate-600',
 };
 
 export default function TicketDetail() {
@@ -127,22 +130,22 @@ export default function TicketDetail() {
   };
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex bg-transparent">
       {/* Main chat area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <header className="px-6 py-4 border-b border-gray-200 bg-white flex items-center justify-between">
+        <header className="px-6 py-4 border-b border-border bg-white/80 backdrop-blur flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/tickets" className="text-gray-500 hover:text-gray-700">
+            <Link to="/tickets" className="text-slate-500 hover:text-slate-700">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
             </Link>
             <div>
-              <h1 className="text-lg font-semibold text-gray-900">
+              <h1 className="text-lg font-semibold text-slate-900">
                 {ticket.visitor.name || ticket.visitor.email || 'Anonymous Visitor'}
               </h1>
-              <p className="text-sm text-gray-500">Ticket #{ticket.id.slice(-8)}</p>
+              <p className="text-sm text-slate-500">Ticket #{ticket.id.slice(-8)}</p>
             </div>
           </div>
           {ticket.slackPermalink && (
@@ -150,18 +153,20 @@ export default function TicketDetail() {
               href={ticket.slackPermalink}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-[#4A154B] text-white rounded-lg text-sm font-medium hover:bg-[#3D1141] transition-colors shadow-sm"
+              className="inline-flex"
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313z"/>
-              </svg>
-              Reply in Slack
+              <Button className="gap-2">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313z"/>
+                </svg>
+                Reply in Slack
+              </Button>
             </a>
           )}
         </header>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50 space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 bg-slate-50 space-y-4">
           {messages.map((message) => (
             <div
               key={message.id}
@@ -171,13 +176,13 @@ export default function TicketDetail() {
                 <div
                   className={`px-4 py-3 rounded-2xl ${
                     message.source === 'visitor'
-                      ? 'bg-white border border-gray-200 rounded-bl-md'
-                      : 'bg-[#4A154B] text-white rounded-br-md'
+                      ? 'bg-white border border-border rounded-bl-md shadow-sm'
+                      : 'bg-slate-900 text-white rounded-br-md shadow-sm'
                   }`}
                 >
                   {message.text}
                 </div>
-                <div className={`mt-1 text-xs text-gray-500 ${message.source === 'visitor' ? '' : 'text-right'}`}>
+                <div className={`mt-1 text-xs text-slate-500 ${message.source === 'visitor' ? '' : 'text-right'}`}>
                   {message.source === 'slack' && message.slackUserName && (
                     <span className="font-medium mr-2">{message.slackUserName}</span>
                   )}
@@ -193,79 +198,88 @@ export default function TicketDetail() {
         </div>
 
         {/* Read-only footer */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 text-center text-sm text-gray-500">
+        <div className="px-6 py-4 bg-slate-50 border-t border-border text-center text-sm text-slate-500">
           This ticket is read-only. Please use Slack to reply to the customer.
         </div>
       </div>
 
       {/* Sidebar */}
-      <aside className="w-80 border-l border-gray-200 bg-white overflow-y-auto">
+      <aside className="w-80 border-l border-border bg-white/80 backdrop-blur overflow-y-auto">
         <div className="p-6 space-y-6">
-          {/* Visitor info */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Visitor</h3>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-medium">
-                {ticket.visitor.name?.[0]?.toUpperCase() || ticket.visitor.email?.[0]?.toUpperCase() || 'V'}
-              </div>
-              <div>
-                <div className="font-medium text-gray-900">
-                  {ticket.visitor.name || 'Anonymous'}
+          <Card>
+            <CardHeader>
+              <CardTitle>Visitor</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-600 font-medium">
+                  {ticket.visitor.name?.[0]?.toUpperCase() || ticket.visitor.email?.[0]?.toUpperCase() || 'V'}
                 </div>
-                {ticket.visitor.email && (
-                  <div className="text-sm text-gray-500">{ticket.visitor.email}</div>
-                )}
-              </div>
-            </div>
-            {ticket.visitor.metadata && Object.keys(ticket.visitor.metadata).length > 0 && (
-              <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
-                {Object.entries(ticket.visitor.metadata as Record<string, unknown>).map(([key, value]) => (
-                  <div key={key} className="flex justify-between">
-                    <span className="text-gray-500">{key}:</span>
-                    <span className="text-gray-900 font-medium">{String(value)}</span>
+                <div>
+                  <div className="font-medium text-slate-900">
+                    {ticket.visitor.name || 'Anonymous'}
                   </div>
-                ))}
+                  {ticket.visitor.email && (
+                    <div className="text-sm text-slate-500">{ticket.visitor.email}</div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
+              {ticket.visitor.metadata && Object.keys(ticket.visitor.metadata).length > 0 && (
+                <div className="bg-slate-50 rounded-lg p-3 text-sm space-y-1">
+                  {Object.entries(ticket.visitor.metadata as Record<string, unknown>).map(([key, value]) => (
+                    <div key={key} className="flex justify-between">
+                      <span className="text-slate-500">{key}:</span>
+                      <span className="text-slate-900 font-medium">{String(value)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-          {/* Status */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-900 mb-2">Status</h3>
-            <div className={`px-3 py-2 rounded-lg text-sm font-medium ${statusColors[ticket.status] || 'bg-gray-100 text-gray-800'}`}>
-              {ticket.status.charAt(0) + ticket.status.slice(1).toLowerCase()}
-            </div>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Badge className={statusColors[ticket.status] || 'bg-slate-100 text-slate-800'}>
+                {ticket.status.charAt(0) + ticket.status.slice(1).toLowerCase()}
+              </Badge>
+            </CardContent>
+          </Card>
 
-          {/* Priority */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-900 mb-2">Priority</h3>
-            <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 bg-gray-50">
-              {ticket.priority.charAt(0) + ticket.priority.slice(1).toLowerCase()}
-            </div>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Priority</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="px-3 py-2 border border-border rounded-lg text-sm text-slate-700 bg-slate-50">
+                {ticket.priority.charAt(0) + ticket.priority.slice(1).toLowerCase()}
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Ticket info */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-900 mb-2">Ticket Info</h3>
-            <div className="space-y-2 text-sm">
+          <Card>
+            <CardHeader>
+              <CardTitle>Ticket Info</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-500">Created</span>
-                <span className="text-gray-900">{formatDate(ticket.createdAt)}</span>
+                <span className="text-slate-500">Created</span>
+                <span className="text-slate-900">{formatDate(ticket.createdAt)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Messages</span>
-                <span className="text-gray-900">{messages.length}</span>
+                <span className="text-slate-500">Messages</span>
+                <span className="text-slate-900">{messages.length}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">ID</span>
-                <span className="text-gray-900 font-mono text-xs">{ticket.id.slice(-8)}</span>
+                <span className="text-slate-500">ID</span>
+                <span className="text-slate-900 font-mono text-xs">{ticket.id.slice(-8)}</span>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </aside>
     </div>
   );
 }
-

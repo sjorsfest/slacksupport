@@ -1,93 +1,187 @@
+@import url("https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Nunito:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
+
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   /* Font family */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 
-    "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-sans: "Nunito", "Segoe UI", sans-serif;
+  --font-display: "Fredoka", "Nunito", sans-serif;
 
-  /* Colors - Light theme */
-  --color-background: #ffffff;
-  --color-foreground: #0f172a;
-  --color-primary: #4A154B;
-  --color-primary-foreground: #ffffff;
-  --color-accent: #36c5f0;
-  --color-accent-foreground: #ffffff;
-  --color-muted: #f1f5f9;
-  --color-muted-foreground: #64748b;
-  --color-card: #ffffff;
-  --color-surface: #f8fafc;
-  --color-border: #e2e8f0;
-  --color-destructive: #ef4444;
-  --color-secondary: #f1f5f9;
-  --color-secondary-foreground: #0f172a;
+  /* Colors - Fun & Wholesome Palette */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
   
-  /* Slack brand colors */
-  --color-slack-blue: #4A154B;
-  --color-slack-aubergine: #4A154B;
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
   
-  /* Ring */
-  --color-ring: #36c5f0;
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  
+  /* Slack brand colors (kept for compatibility) */
+  --color-slack-blue: #36c5f0;
+  --color-slack-aubergine: #4a154b;
+
+  /* Custom Animations */
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-bounce-subtle: bounce-subtle 2s infinite;
+  --animate-wiggle: wiggle 1s ease-in-out infinite;
+  --animate-pop: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  @keyframes bounce-subtle {
+    0%, 100% { transform: translateY(-3%); }
+    50% { transform: translateY(0); }
+  }
+
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(-3deg); }
+    50% { transform: rotate(3deg); }
+  }
+  
+  @keyframes pop {
+    0% { transform: scale(0.95); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+}
+
+:root {
+  /* Base - Warm Paper-like */
+  --background: #fffbeb; /* Amber-50 */
+  --foreground: #1f2937; /* Gray-800 */
+
+  /* Card - Clean White */
+  --card: #ffffff;
+  --card-foreground: #1f2937;
+
+  /* Popover */
+  --popover: #ffffff;
+  --popover-foreground: #1f2937;
+
+  /* Primary - Fresh Green (Kept for branding elements) */
+  --primary: #D0FAA2;
+  --primary-foreground: #14532d; 
+
+  /* Secondary - Creative Pink (Now the star!) */
+  --secondary: #FF4FA3;
+  --secondary-foreground: #ffffff;
+
+  /* Muted */
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
+
+  /* Accent - Pink/Rose */
+  --accent: #FF4FA3;
+  --accent-foreground: #ffffff;
+
+  /* Destructive */
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  /* Border & Input */
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --ring: #FF4FA3; /* Ring is now Pink */
+
+  --radius: 1rem;
+}
+
+.dark {
+  /* Dark mode mappings */
+  --background: #1f2937;
+  --foreground: #f3f4f6;
+  --card: #111827;
+  --card-foreground: #f3f4f6;
+  --popover: #111827;
+  --popover-foreground: #f3f4f6;
+  --primary: #D0FAA2;
+  --primary-foreground: #14532d;
+  --secondary: #FF4FA3;
+  --secondary-foreground: #ffffff;
+  --muted: #374151;
+  --muted-foreground: #9ca3af;
+  --accent: #FF4FA3;
+  --accent-foreground: #ffffff;
+  --destructive: #f87171;
+  --destructive-foreground: #ffffff;
+  --border: #374151;
+  --input: #374151;
+  --ring: #FF4FA3;
 }
 
 html,
 body {
-  @apply bg-background text-foreground antialiased;
+  @apply bg-background text-foreground antialiased font-sans;
+  overflow-x: hidden;
 }
 
-/* Custom scrollbar for webkit browsers */
+/* Fun Pink Background Pattern */
+body {
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(255, 79, 163, 0.15) 0%, transparent 30%),
+    radial-gradient(circle at 85% 30%, rgba(255, 79, 163, 0.10) 0%, transparent 30%),
+    radial-gradient(circle at 50% 80%, rgba(255, 200, 220, 0.2) 0%, transparent 40%);
+  background-attachment: fixed;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Utility classes for interactions */
+.interactive-hover {
+  @apply transition-all duration-200 ease-out hover:scale-105 active:scale-95;
+}
+
+.interactive-card {
+  @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-pink-500/10;
+}
+
+/* Pink Gradient Text Utility */
+.text-gradient-pink {
+  @apply bg-gradient-to-r from-secondary to-pink-400 bg-clip-text text-transparent;
+}
+
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-muted rounded;
+  @apply bg-transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/30 rounded;
+  @apply bg-pink-200/50 rounded-full hover:bg-pink-300/50 transition-colors;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/50;
-}
-
-/* Keyframe animations */
-@keyframes accordion-down {
-  from {
-    height: 0;
-  }
-  to {
-    height: var(--radix-accordion-content-height);
-  }
-}
-
-@keyframes accordion-up {
-  from {
-    height: var(--radix-accordion-content-height);
-  }
-  to {
-    height: 0;
-  }
-}
-
-@keyframes bounce-dot {
-  0%, 80%, 100% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(-6px);
-  }
-}
-
-.animate-accordion-down {
-  animation: accordion-down 0.2s ease-out;
-}
-
-.animate-accordion-up {
-  animation: accordion-up 0.2s ease-out;
-}
-
-.animate-bounce-dot {
-  animation: bounce-dot 1.4s infinite ease-in-out both;
-}

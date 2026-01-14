@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useFetcher } from "react-router";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 
 export default function Signup() {
   const [error, setError] = useState<string | null>(null);
@@ -28,12 +30,15 @@ export default function Signup() {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">
+      <h2 className="text-2xl font-semibold text-slate-900 mb-2">
         Create your account
       </h2>
+      <p className="text-sm text-slate-500 mb-6">
+        Launch a polished support experience in minutes.
+      </p>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+        <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-sm">
           {error}
         </div>
       )}
@@ -42,16 +47,15 @@ export default function Signup() {
         <div>
           <label
             htmlFor="name"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-slate-700 mb-1"
           >
             Your name
           </label>
-          <input
+          <Input
             type="text"
             id="name"
             name="name"
             required
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A154B] focus:border-transparent transition-shadow"
             placeholder="John Doe"
           />
         </div>
@@ -59,32 +63,30 @@ export default function Signup() {
         <div>
           <label
             htmlFor="companyName"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-slate-700 mb-1"
           >
             Company name
           </label>
-          <input
+          <Input
             type="text"
             id="companyName"
             name="companyName"
             required
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A154B] focus:border-transparent transition-shadow"
           />
         </div>
 
         <div>
           <label
             htmlFor="email"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-slate-700 mb-1"
           >
             Work email
           </label>
-          <input
+          <Input
             type="email"
             id="email"
             name="email"
             required
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A154B] focus:border-transparent transition-shadow"
             placeholder="you@company.com"
           />
         </div>
@@ -92,36 +94,35 @@ export default function Signup() {
         <div>
           <label
             htmlFor="password"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-slate-700 mb-1"
           >
             Password
           </label>
-          <input
+          <Input
             type="password"
             id="password"
             name="password"
             required
             minLength={8}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A154B] focus:border-transparent transition-shadow"
             placeholder="••••••••"
           />
-          <p className="mt-1 text-xs text-gray-500">At least 8 characters</p>
+          <p className="mt-1 text-xs text-slate-500">At least 8 characters</p>
         </div>
 
-        <button
+        <Button
           type="submit"
           disabled={isLoading}
-          className="w-full py-2.5 px-4 bg-[#4A154B] text-white font-medium rounded-lg hover:bg-[#3D1141] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#4A154B] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full"
         >
           {isLoading ? "Creating account..." : "Create account"}
-        </button>
+        </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-600">
+      <p className="mt-6 text-center text-sm text-slate-600">
         Already have an account?{" "}
         <Link
           to="/login"
-          className="text-[#4A154B] font-medium hover:underline"
+          className="text-primary font-medium hover:underline"
         >
           Sign in
         </Link>

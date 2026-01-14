@@ -8,6 +8,7 @@ import {
 } from "react-router";
 
 import { SupportWidget } from "./components/SupportWidget";
+import { Toaster } from "./components/ui/toaster";
 
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -27,6 +28,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
+        <Toaster />
         <ScrollRestoration />
         <Scripts />
         <SupportWidget accountId="cmjjtjd6e000004l7av2fv15r" />
@@ -56,14 +58,16 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   }
 
   return (
-    <main className="pt-16 p-4 container mx-auto">
-      <h1>{message}</h1>
-      <p>{details}</p>
-      {stack && (
-        <pre className="w-full p-4 overflow-x-auto">
-          <code>{stack}</code>
-        </pre>
-      )}
+    <main className="min-h-screen flex items-center justify-center p-6">
+      <div className="max-w-xl w-full rounded-3xl border border-border bg-card p-8 shadow-lg">
+        <h1 className="font-display text-2xl text-foreground mb-2">{message}</h1>
+        <p className="text-muted-foreground">{details}</p>
+        {stack && (
+          <pre className="w-full mt-4 p-4 rounded-xl bg-muted text-muted-foreground overflow-x-auto text-xs">
+            <code>{stack}</code>
+          </pre>
+        )}
+      </div>
     </main>
   );
 }

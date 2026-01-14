@@ -1,8 +1,15 @@
-import { useState } from 'react';
 import { Link, useLoaderData, useSearchParams } from 'react-router';
 import type { LoaderFunctionArgs } from 'react-router';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Clock, MessageSquare, AlertCircle, CheckCircle2, Circle } from 'lucide-react';
+
 import { requireUser } from '~/lib/auth.server';
 import { prisma } from '~/lib/db.server';
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { cn } from "~/lib/utils";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -61,18 +68,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
   };
 }
 
-const statusColors = {
-  OPEN: 'bg-blue-100 text-blue-700',
-  PENDING: 'bg-yellow-100 text-yellow-700',
-  RESOLVED: 'bg-green-100 text-green-700',
-  CLOSED: 'bg-gray-100 text-gray-600',
+const statusConfig = {
+  OPEN: { color: 'bg-blue-500', icon: Circle, label: 'Open' },
+  PENDING: { color: 'bg-amber-500', icon: Clock, label: 'Pending' },
+  RESOLVED: { color: 'bg-emerald-500', icon: CheckCircle2, label: 'Resolved' },
+  CLOSED: { color: 'bg-slate-500', icon: CheckCircle2, label: 'Closed' },
 };
 
-const priorityColors = {
-  LOW: 'text-gray-500',
-  MEDIUM: 'text-blue-500',
-  HIGH: 'text-orange-500',
-  URGENT: 'text-red-500',
+const priorityConfig = {
+  LOW: { color: 'text-slate-500', bg: 'bg-slate-100' },
+  MEDIUM: { color: 'text-blue-600', bg: 'bg-blue-100' },
+  HIGH: { color: 'text-orange-600', bg: 'bg-orange-100' },
+  URGENT: { color: 'text-rose-600', bg: 'bg-rose-100' },
 };
 
 function formatTimeAgo(dateStr: string) {
@@ -86,6 +93,21 @@ function formatTimeAgo(dateStr: string) {
   if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
   return date.toLocaleDateString();
 }
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 }
+};
 
 export default function TicketsIndex() {
   const { tickets, pagination, counts } = useLoaderData<typeof loader>();
@@ -103,155 +125,175 @@ export default function TicketsIndex() {
   const totalTickets = Object.values(counts).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="p-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Tickets</h1>
-        <p className="text-gray-600 mt-1">Manage and respond to support requests</p>
-      </div>
-
-      {/* Status tabs */}
-      <div className="flex gap-2 mb-6 border-b border-gray-200">
-        <button
-          onClick={() => setStatus('')}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-            !currentStatus
-              ? 'border-[#4A154B] text-[#4A154B]'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          All ({totalTickets})
-        </button>
-        <button
-          onClick={() => setStatus('OPEN')}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-            currentStatus === 'OPEN'
-              ? 'border-[#4A154B] text-[#4A154B]'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Open ({counts.OPEN})
-        </button>
-        <button
-          onClick={() => setStatus('PENDING')}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-            currentStatus === 'PENDING'
-              ? 'border-[#4A154B] text-[#4A154B]'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Pending ({counts.PENDING})
-        </button>
-        <button
-          onClick={() => setStatus('RESOLVED')}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-            currentStatus === 'RESOLVED'
-              ? 'border-[#4A154B] text-[#4A154B]'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Resolved ({counts.RESOLVED})
-        </button>
-      </div>
-
-      {/* Tickets list */}
-      {tickets.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <svg className="w-12 h-12 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-          </svg>
-          <h3 className="text-lg font-medium text-gray-900 mb-1">No tickets yet</h3>
-          <p className="text-gray-500">Tickets will appear here when visitors contact you</p>
+    <div className="p-8 max-w-7xl mx-auto">
+      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
+            Support Tickets
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Manage your conversations with a smile 🐴
+          </p>
         </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Visitor</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Last Message</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Updated</th>
-                <th className="px-6 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {tickets.map((ticket) => (
-                <tr key={ticket.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 text-sm font-medium">
-                        {ticket.visitor.name?.[0]?.toUpperCase() || ticket.visitor.email?.[0]?.toUpperCase() || 'V'}
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900">
-                          {ticket.visitor.name || ticket.visitor.email || 'Anonymous'}
-                        </div>
-                        {ticket.visitor.email && ticket.visitor.name && (
-                          <div className="text-sm text-gray-500">{ticket.visitor.email}</div>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-gray-900 text-sm line-clamp-1 max-w-xs">
-                      {ticket.lastMessage?.text || 'No messages'}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[ticket.status]}`}>
-                      {ticket.status.charAt(0) + ticket.status.slice(1).toLowerCase()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`text-sm font-medium ${priorityColors[ticket.priority]}`}>
-                      {ticket.priority.charAt(0) + ticket.priority.slice(1).toLowerCase()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {ticket.lastMessage ? formatTimeAgo(String(ticket.lastMessage.createdAt)) : formatTimeAgo(ticket.createdAt)}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <Link
-                      to={`/tickets/${ticket.id}`}
-                      className="text-[#4A154B] hover:text-[#3D1141] font-medium text-sm"
-                    >
-                      View →
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <Button className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity shadow-lg shadow-primary/20 rounded-full px-6">
+          <SparklesIcon className="w-4 h-4 mr-2" />
+          New Ticket
+        </Button>
+      </div>
 
-          {/* Pagination */}
-          {pagination.pages > 1 && (
-            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                Showing {(pagination.page - 1) * pagination.limit + 1} to{' '}
-                {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} tickets
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setSearchParams({ ...Object.fromEntries(searchParams), page: String(pagination.page - 1) })}
-                  disabled={pagination.page === 1}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => setSearchParams({ ...Object.fromEntries(searchParams), page: String(pagination.page + 1) })}
-                  disabled={pagination.page === pagination.pages}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
+      {/* Filter Tabs */}
+      <div className="flex flex-wrap gap-2 mb-8 p-1 bg-muted/50 rounded-2xl w-fit">
+        {[
+          { id: '', label: 'All', count: totalTickets },
+          { id: 'OPEN', label: 'Open', count: counts.OPEN },
+          { id: 'PENDING', label: 'Pending', count: counts.PENDING },
+          { id: 'RESOLVED', label: 'Resolved', count: counts.RESOLVED },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setStatus(tab.id)}
+            className={cn(
+              "px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 relative",
+              currentStatus === tab.id
+                ? "text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-white/50"
+            )}
+          >
+            {currentStatus === tab.id && (
+              <motion.div
+                layoutId="activeTab"
+                className="absolute inset-0 bg-white shadow-sm rounded-xl"
+                initial={false}
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-2">
+              {tab.label}
+              <Badge variant="secondary" className="bg-muted text-muted-foreground text-[10px] h-5 px-1.5 min-w-[1.25rem]">
+                {tab.count}
+              </Badge>
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {tickets.length === 0 ? (
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center py-20"
+        >
+          <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce-subtle">
+            <MessageSquare className="w-10 h-10 text-muted-foreground/50" />
+          </div>
+          <h3 className="text-2xl font-display font-bold text-foreground mb-2">No tickets found</h3>
+          <p className="text-muted-foreground">It's quiet... too quiet? 🌵</p>
+        </motion.div>
+      ) : (
+        <motion.div 
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+        >
+          <AnimatePresence mode="popLayout">
+            {tickets.map((ticket) => {
+              const StatusIcon = statusConfig[ticket.status].icon;
+              
+              return (
+                <motion.div key={ticket.id} variants={item} layout>
+                  <Link to={`/tickets/${ticket.id}`}>
+                    <Card className="h-full hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-border/50 bg-card/50 backdrop-blur-sm group cursor-pointer overflow-hidden">
+                      <div className={cn("h-1 w-full", statusConfig[ticket.status].color)} />
+                      <CardHeader className="pb-3">
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
+                              <AvatarFallback className={cn("text-white font-bold", statusConfig[ticket.status].color)}>
+                                {ticket.visitor.name?.[0]?.toUpperCase() || 'V'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <h3 className="font-bold text-foreground line-clamp-1">
+                                {ticket.visitor.name || 'Anonymous Visitor'}
+                              </h3>
+                              <p className="text-xs text-muted-foreground">
+                                {ticket.visitor.email}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge 
+                            variant="outline" 
+                            className={cn(
+                              "capitalize border-0", 
+                              priorityConfig[ticket.priority].bg,
+                              priorityConfig[ticket.priority].color
+                            )}
+                          >
+                            {ticket.priority.toLowerCase()}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      
+                      <CardContent className="pb-3">
+                        <div className="bg-muted/30 p-3 rounded-lg mb-3 group-hover:bg-muted/50 transition-colors">
+                          <p className="text-sm text-foreground/80 line-clamp-2 min-h-[2.5rem]">
+                            {ticket.lastMessage?.text || <span className="italic text-muted-foreground">No messages yet...</span>}
+                          </p>
+                        </div>
+                      </CardContent>
+
+                      <CardFooter className="pt-0 text-xs text-muted-foreground flex justify-between items-center">
+                        <div className="flex items-center gap-1.5">
+                          <StatusIcon className={cn("w-3.5 h-3.5", statusConfig[ticket.status].color.replace('bg-', 'text-'))} />
+                          <span className="capitalize">{ticket.status.toLowerCase()}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" />
+                          {ticket.lastMessage ? formatTimeAgo(String(ticket.lastMessage.createdAt)) : formatTimeAgo(ticket.createdAt)}
+                        </div>
+                      </CardFooter>
+                    </Card>
+                  </Link>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </motion.div>
+      )}
+
+      {/* Pagination */}
+      {pagination.pages > 1 && (
+        <div className="mt-8 flex justify-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setSearchParams({ ...Object.fromEntries(searchParams), page: String(pagination.page - 1) })}
+            disabled={pagination.page === 1}
+            className="rounded-full"
+          >
+            Previous
+          </Button>
+          <div className="flex items-center px-4 text-sm font-medium text-muted-foreground">
+            Page {pagination.page} of {pagination.pages}
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => setSearchParams({ ...Object.fromEntries(searchParams), page: String(pagination.page + 1) })}
+            disabled={pagination.page === pagination.pages}
+            className="rounded-full"
+          >
+            Next
+          </Button>
         </div>
       )}
     </div>
   );
 }
 
+function SparklesIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+    </svg>
+  );
+}

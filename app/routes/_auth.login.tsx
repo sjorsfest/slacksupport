@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
-import { Form, Link, useNavigate, useFetcher } from "react-router";
+import { Link, useNavigate, useFetcher } from "react-router";
 import type { ActionFunctionArgs } from "react-router";
 import { login } from "~/lib/auth.server";
 import { loginSchema } from "~/types/schemas";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
@@ -55,12 +57,15 @@ export default function Login() {
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-gray-900 mb-6">
-        Sign in to your account
+      <h2 className="text-2xl font-semibold text-slate-900 mb-2">
+        Welcome back
       </h2>
+      <p className="text-sm text-slate-500 mb-6">
+        Sign in to keep conversations flowing.
+      </p>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+        <div className="mb-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-sm">
           {error}
         </div>
       )}
@@ -69,16 +74,15 @@ export default function Login() {
         <div>
           <label
             htmlFor="email"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-slate-700 mb-1"
           >
             Email
           </label>
-          <input
+          <Input
             type="email"
             id="email"
             name="email"
             required
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A154B] focus:border-transparent transition-shadow"
             placeholder="you@company.com"
           />
         </div>
@@ -86,34 +90,33 @@ export default function Login() {
         <div>
           <label
             htmlFor="password"
-            className="block text-sm font-medium text-gray-700 mb-1"
+            className="block text-sm font-medium text-slate-700 mb-1"
           >
             Password
           </label>
-          <input
+          <Input
             type="password"
             id="password"
             name="password"
             required
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A154B] focus:border-transparent transition-shadow"
             placeholder="••••••••"
           />
         </div>
 
-        <button
+        <Button
           type="submit"
           disabled={isLoading}
-          className="w-full py-2.5 px-4 bg-[#4A154B] text-white font-medium rounded-lg hover:bg-[#3D1141] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#4A154B] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full"
         >
           {isLoading ? "Signing in..." : "Sign in"}
-        </button>
+        </Button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-600">
+      <p className="mt-6 text-center text-sm text-slate-600">
         Don't have an account?{" "}
         <Link
           to="/signup"
-          className="text-[#4A154B] font-medium hover:underline"
+          className="text-primary font-medium hover:underline"
         >
           Sign up
         </Link>

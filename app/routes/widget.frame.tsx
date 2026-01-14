@@ -1,9 +1,24 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import type { LoaderFunctionArgs } from "react-router";
-import { useLoaderData, useFetcher } from "react-router";
+import type { LoaderFunctionArgs, LinksFunction } from "react-router";
+import { useLoaderData, useFetcher, Links, Meta } from "react-router";
+import { motion, AnimatePresence } from "framer-motion";
+import { Send, X, MessageSquare, Sparkles, PartyPopper } from "lucide-react";
+
 import { prisma } from "~/lib/db.server";
 import { isServerless } from "~/lib/env.server";
-import "../styles/widget.frame.css";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { Textarea } from "~/components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { cn } from "~/lib/utils";
+import appStyles from "~/app.css?url";
+
+export const links: LinksFunction = () => [
+  { rel: "stylesheet", href: appStyles },
+  { rel: "preconnect", href: "https://fonts.googleapis.com" },
+  { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+  { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Nunito:wght@400;500;600;700&display=swap" },
+];
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -17,7 +32,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     throw new Response("Missing accountId", { status: 400 });
   }
 
-  // Get widget config
   const widgetConfig = await prisma.widgetConfig.findUnique({
     where: { accountId },
     include: {
@@ -31,7 +45,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     throw new Response("Widget not configured", { status: 404 });
   }
 
-  // Get existing ticket for this visitor if any
   let existingTicket = null;
   if (visitorId) {
     const visitor = await prisma.visitor.findUnique({
@@ -60,15 +73,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     existingTicket = visitor?.tickets[0] || null;
   }
 
-  // Use polling on serverless environments (Vercel, Lambda, etc.) where SSE doesn't work reliably
   const usePolling = isServerless();
   
-  if (usePolling) {
-    console.log("[Widget] Running in SERVERLESS mode - using polling for real-time updates");
-  } else {
-    console.log("[Widget] Running in PERSISTENT SERVER mode - using SSE for real-time updates");
-  }
-
   return {
     accountId,
     visitorId: visitorId || "",
@@ -135,10 +141,9 @@ export default function WidgetFrame() {
   
   const showMissingInfoForm = (!visitorInfo.name || !visitorInfo.email) && !ticketId;
 
-  const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
-  const POLLING_INTERVAL_MS = 2000; // 2 seconds
+  const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+  const POLLING_INTERVAL_MS = 2000;
 
-  // Reset idle timeout on activity
   const resetIdleTimeout = useCallback(() => {
     lastActivityRef.current = new Date();
     if (isIdle) {
@@ -162,36 +167,20 @@ export default function WidgetFrame() {
     }
   }, [isIdle, data.usePolling, ticketId]);
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Handle message sending response
   useEffect(() => {
     if (messageFetcher.data) {
       const result = messageFetcher.data as any;
       
-      // If we just created a ticket
       if (result.ticketId && !ticketId) {
         setTicketId(result.ticketId);
       }
 
-      // If we got a message ID back (success)
       if (result.messageId) {
-        // Find the pending message and update it
         setMessages((prev) => {
-          // We need to find which pending message this corresponds to.
-          // Since we don't pass the pending ID to the server, we might just look for the last pending one
-          // or rely on the fact that we only send one at a time effectively.
-          // A better approach would be to pass a client-side ID to the server and have it return it.
-          // For now, let's just update the most recent pending message or all pending messages if we can't distinguish.
-          // Actually, let's just replace the pending message with the real one if we can match the text or just rely on the server response.
-          
-          // Simplification: Just mark the last pending message as sent or replace it.
-          // Ideally we'd match by a temporary ID.
-          
-          // Let's try to match by text if possible, or just the last pending one.
           const lastPendingIndex = [...prev].reverse().findIndex(m => m.pending);
           if (lastPendingIndex !== -1) {
             const realIndex = prev.length - 1 - lastPendingIndex;
@@ -209,16 +198,12 @@ export default function WidgetFrame() {
     }
   }, [messageFetcher.data, ticketId]);
 
-
-  // Polling logic using useFetcher
   useEffect(() => {
     if (pollingFetcher.data && pollingFetcher.data.messages) {
        const newMessages = pollingFetcher.data.messages;
        if (newMessages.length > 0) {
-          // Update last message time
           lastMessageTimeRef.current = newMessages[newMessages.length - 1].createdAt;
           
-          // Add new messages
           setMessages((prev) => {
             const newMsgs = newMessages.filter(
               (m: Message) => !prev.some((p) => p.id === m.id)
@@ -233,8 +218,6 @@ export default function WidgetFrame() {
     }
   }, [pollingFetcher.data]);
 
-
-  // Polling for serverless environments (Vercel, Lambda, etc.)
   const startPolling = useCallback(() => {
     if (!ticketId || !data.usePolling) return;
 
@@ -242,7 +225,6 @@ export default function WidgetFrame() {
     setIsIdle(false);
     resetIdleTimeout();
 
-    // Set initial last message time
     if (!lastMessageTimeRef.current && messages.length > 0) {
       lastMessageTimeRef.current = messages[messages.length - 1].createdAt;
     }
@@ -257,27 +239,22 @@ export default function WidgetFrame() {
         }
     };
 
-    // Poll immediately, then every 2 seconds
     poll();
     pollingIntervalRef.current = setInterval(poll, POLLING_INTERVAL_MS);
-  }, [ticketId, data.usePolling, messages, resetIdleTimeout, pollingFetcher]); // Added pollingFetcher to deps
+  }, [ticketId, data.usePolling, messages, resetIdleTimeout, pollingFetcher]);
 
-  // SSE connection for persistent server environments
   const connectSSE = useCallback(() => {
     if (!ticketId || data.usePolling) return;
 
-    // Close existing connection if any
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
     }
 
-    // We can use a relative URL here because the browser will resolve it against the current origin
     const sseUrl = `/api/tickets/${ticketId}/stream`;
     const eventSource = new EventSource(sseUrl);
 
     eventSource.addEventListener("connected", () => {
       setIsConnected(true);
-      console.log("SSE connected");
     });
 
     eventSource.addEventListener("message", (event) => {
@@ -291,11 +268,9 @@ export default function WidgetFrame() {
           slackUserName: messageData.slackUserName,
         };
         setMessages((prev) => {
-          // Avoid duplicates
           if (prev.some((m) => m.id === newMessage.id)) return prev;
           return [...prev, newMessage];
         });
-        // Notify parent of new message
         window.parent.postMessage({ type: "sw:newMessage" }, "*");
       } catch (e) {
         console.error("Failed to parse SSE message:", e);
@@ -303,13 +278,10 @@ export default function WidgetFrame() {
     });
 
     eventSource.onerror = (error) => {
-      console.error("SSE error:", error);
       setIsConnected(false);
       eventSource.close();
       
-      // Reconnect after 3 seconds
       setTimeout(() => {
-        console.log("SSE reconnecting...");
         connectSSE();
       }, 3000);
     };
@@ -317,7 +289,6 @@ export default function WidgetFrame() {
     eventSourceRef.current = eventSource;
   }, [ticketId, data.usePolling]);
 
-  // Start real-time connection based on environment
   useEffect(() => {
     if (ticketId) {
       if (data.usePolling) {
@@ -340,14 +311,12 @@ export default function WidgetFrame() {
     };
   }, [ticketId, data.usePolling, connectSSE, startPolling]);
 
-  // Continue chat after idle
   const handleContinueChat = () => {
     if (data.usePolling && ticketId) {
       startPolling();
     }
   };
 
-  // Notify parent that widget is ready
   useEffect(() => {
     window.parent.postMessage({ type: "sw:ready" }, "*");
   }, []);
@@ -358,19 +327,15 @@ export default function WidgetFrame() {
 
   const handleInfoSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Form visibility is derived from visitorInfo state, so no need to explicitly hide it
   };
 
   const handleSendMessage = async () => {
     const text = inputValue.trim();
     if (!text) return;
 
-    // Reset idle timeout on user activity
     resetIdleTimeout();
-
     setInputValue("");
 
-    // Add pending message
     const pendingId = `pending-${Date.now()}`;
     const pendingMessage: Message = {
       id: pendingId,
@@ -384,16 +349,15 @@ export default function WidgetFrame() {
     try {
       let currentTicketId = ticketId;
 
-      // Create ticket if needed
       if (!currentTicketId) {
         messageFetcher.submit(
           {
-            accountId: data.accountId!, // We checked this in loader
+            accountId: data.accountId!,
             visitorId: data.visitorId,
             message: text,
             email: visitorInfo.email,
             name: visitorInfo.name,
-            metadata: data.metadata ? JSON.stringify(data.metadata) : "{}", // Ensure string for FormData/JSON
+            metadata: data.metadata ? JSON.stringify(data.metadata) : "{}",
           },
           {
             method: "POST",
@@ -402,7 +366,6 @@ export default function WidgetFrame() {
           }
         );
       } else {
-        // Send message to existing ticket
         messageFetcher.submit(
           { text, source: "visitor" },
           {
@@ -414,9 +377,7 @@ export default function WidgetFrame() {
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      // Remove pending message on error
       setMessages((prev) => prev.filter((m) => m.id !== pendingId));
-      // Could show error toast here
     }
   };
 
@@ -450,7 +411,6 @@ export default function WidgetFrame() {
     });
   };
 
-  // Group messages by date
   const groupedMessages: { date: string; messages: Message[] }[] = [];
   let currentDate = "";
   for (const msg of messages) {
@@ -463,209 +423,218 @@ export default function WidgetFrame() {
     }
   }
 
-  if (showMissingInfoForm && !ticketId) {
-    return (
-      <html lang="en">
-        <head>
-          <meta charSet="utf-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <title>Support</title>
-        </head>
-        <body>
-          <div 
-            className="widget-container"
-            style={{ 
-              "--primary-color": data.config.primaryColor, 
-              "--accent-color": data.config.accentColor 
-            } as React.CSSProperties}
-          >
-            <header className="widget-header">
-              <h1>{data.config.companyName}</h1>
-              <button
-                className="close-button"
-                onClick={handleClose}
-                aria-label="Close"
-              >
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                </svg>
-              </button>
-            </header>
-
-            <div className="form-container">
-              <h2 className="form-title">Welcome! 👋</h2>
-              <p className="form-subtitle">
-                Please introduce yourself to start chatting.
-              </p>
-              <form onSubmit={handleInfoSubmit}>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="name">
-                    Name
-                  </label>
-                  <input
-                    id="name"
-                    type="text"
-                    className="form-input"
-                    value={visitorInfo.name}
-                    onChange={(e) =>
-                      setVisitorInfo((prev) => ({ ...prev, name: e.target.value }))
-                    }
-                    placeholder="Your name"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="email">
-                    Email
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    className="form-input"
-                    value={visitorInfo.email}
-                    onChange={(e) =>
-                      setVisitorInfo((prev) => ({ ...prev, email: e.target.value }))
-                    }
-                    placeholder="name@example.com"
-                    required
-                  />
-                </div>
-                <button type="submit" className="submit-button">
-                  Start Chat
-                </button>
-              </form>
-            </div>
-          </div>
-        </body>
-      </html>
-    );
-  }
-
   return (
-    <html lang="en">
+    <html lang="en" className="h-full">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Support</title>
+        <Meta />
+        <Links />
       </head>
-      <body>
-        <div 
-          className="widget-container"
-          style={{ 
-            "--primary-color": data.config.primaryColor, 
-            "--accent-color": data.config.accentColor 
-          } as React.CSSProperties}
-        >
-          <header className="widget-header">
-            <div>
-              <h1>{data.config.companyName}</h1>
-              <div className="subtitle">
-                We typically reply in a few minutes
+      <body className="h-full bg-transparent overflow-hidden font-sans">
+        <div className="h-full flex flex-col bg-background rounded-3xl overflow-hidden shadow-2xl border border-border/50">
+          {/* Header */}
+          <div 
+            className="p-4 text-white flex items-center justify-between shrink-0 transition-colors duration-300 bg-secondary"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm shadow-inner">
+                <Sparkles className="w-5 h-5 text-white animate-pulse" />
+              </div>
+              <div>
+                <h1 className="font-display font-bold text-lg leading-tight tracking-wide">
+                  {data.config.companyName}
+                </h1>
+                <p className="text-xs text-white/90 font-medium">
+                  We reply in a few minutes
+                </p>
               </div>
             </div>
-            <button
-              className="close-button"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-white/20 hover:text-white rounded-full transition-colors"
               onClick={handleClose}
-              aria-label="Close"
             >
-              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-              </svg>
-            </button>
-          </header>
-
-          {ticketId && !isConnected && (
-            <div
-              className={`connection-status ${isConnected ? "" : "disconnected"}`}
-            >
-              Reconnecting...
-            </div>
-          )}
-
-          <div className="messages-container">
-            {messages.length === 0 && (
-              <div className="greeting-message">
-                <h2>👋 Hi there!</h2>
-                <p>{data.config.greetingText}</p>
-              </div>
-            )}
-
-            {groupedMessages.map((group, groupIdx) => (
-              <div key={groupIdx}>
-                <div className="date-divider">
-                  <span>{group.date}</span>
-                </div>
-                {group.messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`message ${msg.source} ${msg.pending ? "pending" : ""}`}
-                  >
-                    <div className="message-avatar">
-                      {msg.source === "visitor"
-                        ? "Y"
-                        : msg.slackUserName?.[0]?.toUpperCase() || "A"}
-                    </div>
-                    <div className="message-content">
-                      <div className="message-bubble">{msg.text}</div>
-                      <div className="message-meta">
-                        {msg.source !== "visitor" && msg.slackUserName && (
-                          <span className="message-sender">
-                            {msg.slackUserName}
-                          </span>
-                        )}
-                        {formatTime(msg.createdAt)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ))}
-
-            {isTyping && (
-              <div className="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
+              <X className="w-6 h-6" />
+            </Button>
           </div>
 
-          {isIdle ? (
-            <div className="idle-overlay">
-              <p>Chat paused due to inactivity</p>
-              <button className="continue-button" onClick={handleContinueChat}>
-                Continue Chat
-              </button>
-            </div>
-          ) : (
-            <div className="composer">
-              <div className="composer-input-wrapper">
-                <textarea
-                  className="composer-input"
-                  placeholder="Send a message..."
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  rows={1}
-                />
-                <button
-                  className="send-button"
-                  onClick={handleSendMessage}
-                  disabled={!inputValue.trim() || messageFetcher.state !== "idle"}
-                  aria-label="Send message"
-                >
-                  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                  </svg>
-                </button>
+          {/* Main Content */}
+          <div className="flex-1 overflow-hidden relative bg-slate-50">
+            {showMissingInfoForm && !ticketId ? (
+              <div className="absolute inset-0 z-10 bg-slate-50 p-6 flex flex-col justify-center">
+                <div className="text-center mb-8">
+                  <div className="w-20 h-20 bg-white rounded-3xl shadow-lg flex items-center justify-center mx-auto mb-6 animate-bounce-subtle border border-border/50">
+                    <PartyPopper className="w-10 h-10 text-secondary" />
+                  </div>
+                  <h2 className="font-display text-3xl font-bold mb-2 text-slate-800">Welcome! 👋</h2>
+                  <p className="text-slate-500 text-lg">
+                    Let's get to know each other before we start.
+                  </p>
+                </div>
+                <form onSubmit={handleInfoSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <label htmlFor="name" className="text-sm font-bold text-slate-700 ml-1">Name</label>
+                    <Input
+                      id="name"
+                      value={visitorInfo.name}
+                      onChange={(e) => setVisitorInfo(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="What should we call you?"
+                      required
+                      className="bg-white border-slate-200 h-12 rounded-xl text-base shadow-sm focus:ring-2 focus:ring-secondary/20"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="email" className="text-sm font-bold text-slate-700 ml-1">Email</label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={visitorInfo.email}
+                      onChange={(e) => setVisitorInfo(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder="Where can we reach you?"
+                      required
+                      className="bg-white border-slate-200 h-12 rounded-xl text-base shadow-sm focus:ring-2 focus:ring-secondary/20"
+                    />
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full font-bold text-lg h-12 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] bg-secondary text-white border-0"
+                  >
+                    Start Chatting
+                  </Button>
+                </form>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="h-full flex flex-col">
+                {/* Messages Area */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth">
+                  {messages.length === 0 && (
+                    <div className="text-center py-12 px-4">
+                      <motion.div 
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="inline-block bg-white px-6 py-4 rounded-3xl shadow-sm border border-slate-100"
+                      >
+                        <p className="text-slate-600 font-medium">
+                          {data.config.greetingText}
+                        </p>
+                      </motion.div>
+                    </div>
+                  )}
 
-          <div className="powered-by">
-            Powered by <a href="#">Support Widget</a>
+                  {groupedMessages.map((group, groupIdx) => (
+                    <div key={groupIdx} className="space-y-6">
+                      <div className="flex items-center gap-4">
+                        <div className="h-px flex-1 bg-slate-200" />
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">{group.date}</span>
+                        <div className="h-px flex-1 bg-slate-200" />
+                      </div>
+                      
+                      {group.messages.map((msg) => {
+                        const isVisitor = msg.source === "visitor";
+                        return (
+                          <motion.div
+                            key={msg.id}
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            className={cn(
+                              "flex gap-3 max-w-[85%]",
+                              isVisitor ? "ml-auto flex-row-reverse" : ""
+                            )}
+                          >
+                            <Avatar className="w-8 h-8 border-2 border-white shadow-sm shrink-0">
+                              <AvatarFallback className={cn(
+                                "text-xs font-bold",
+                                isVisitor ? "bg-slate-800 text-white" : "bg-white text-slate-800 border border-slate-200"
+                              )}>
+                                {isVisitor ? "Y" : msg.slackUserName?.[0]?.toUpperCase() || "A"}
+                              </AvatarFallback>
+                            </Avatar>
+                            
+                            <div className={cn(
+                              "flex flex-col gap-1",
+                              isVisitor ? "items-end" : "items-start"
+                            )}>
+                              <div 
+                                className={cn(
+                                  "p-3.5 rounded-2xl text-sm shadow-sm leading-relaxed",
+                                  isVisitor 
+                                    ? "text-white rounded-tr-none bg-secondary" 
+                                    : "bg-white text-slate-700 rounded-tl-none border border-slate-100",
+                                  msg.pending && "opacity-70"
+                                )}
+                              >
+                                {msg.text}
+                              </div>
+                              <span className="text-[10px] text-slate-400 px-1 font-medium">
+                                {msg.source !== "visitor" && msg.slackUserName && (
+                                  <span className="mr-1">{msg.slackUserName} •</span>
+                                )}
+                                {formatTime(msg.createdAt)}
+                              </span>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                  
+                  {isTyping && (
+                    <div className="flex gap-3">
+                      <Avatar className="w-8 h-8"><AvatarFallback>...</AvatarFallback></Avatar>
+                      <div className="bg-white p-3 rounded-2xl rounded-tl-none border border-slate-100 shadow-sm flex gap-1 items-center">
+                        <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Input Area */}
+                <div className="p-4 bg-white border-t border-slate-100">
+                  {isIdle ? (
+                    <div className="text-center">
+                      <p className="text-sm text-slate-500 mb-3">Chat paused due to inactivity</p>
+                      <Button onClick={handleContinueChat} variant="outline" className="rounded-full border-slate-300 hover:bg-slate-50">
+                        Continue Chat
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="relative flex items-end gap-2">
+                      <Textarea
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Type a message..."
+                        className="min-h-[3rem] max-h-32 py-3.5 resize-none rounded-2xl pr-12 bg-slate-50 focus:bg-white transition-all border-slate-200 focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary/50"
+                        rows={1}
+                      />
+                      <Button
+                        size="icon"
+                        onClick={handleSendMessage}
+                        disabled={!inputValue.trim() || messageFetcher.state !== "idle"}
+                        className={cn(
+                          "absolute right-1.5 bottom-1.5 h-9 w-9 rounded-full transition-all duration-200 shadow-sm bg-secondary border-0",
+                          inputValue.trim() ? "scale-100 opacity-100" : "scale-90 opacity-0"
+                        )}
+                      >
+                        <Send className="w-4 h-4 text-white" />
+                      </Button>
+                    </div>
+                  )}
+                  <div className="text-center mt-3">
+                     <a href="#" className="text-[10px] font-bold text-slate-300 hover:text-secondary transition-colors uppercase tracking-widest">
+                       Powered by Donkey Support
+                     </a>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </body>
