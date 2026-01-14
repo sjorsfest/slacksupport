@@ -125,24 +125,20 @@ export default function TicketsIndex() {
   const totalTickets = Object.values(counts).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="p-4 lg:p-8 max-w-6xl mx-auto pb-24 lg:pb-8">
+      <div className="mb-6 lg:mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
+          <h1 className="font-display text-3xl lg:text-4xl font-bold text-secondary mb-2">
             Support Tickets
           </h1>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-base lg:text-lg">
             Manage your conversations with a smile 🐴
           </p>
         </div>
-        <Button className="bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity shadow-lg shadow-primary/20 rounded-full px-6">
-          <SparklesIcon className="w-4 h-4 mr-2" />
-          New Ticket
-        </Button>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex flex-wrap gap-2 mb-8 p-1 bg-muted/50 rounded-2xl w-fit">
+      <div className="flex flex-wrap gap-2 mb-6 lg:mb-8 p-1 bg-muted rounded-2xl w-fit">
         {[
           { id: '', label: 'All', count: totalTickets },
           { id: 'OPEN', label: 'Open', count: counts.OPEN },
@@ -203,7 +199,7 @@ export default function TicketsIndex() {
               return (
                 <motion.div key={ticket.id} variants={item} layout>
                   <Link to={`/tickets/${ticket.id}`}>
-                    <Card className="h-full hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-border/50 bg-card/50 backdrop-blur-sm group cursor-pointer overflow-hidden">
+                    <Card className="h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-300 border-border shadow-sm group cursor-pointer overflow-hidden">
                       <div className={cn("h-1 w-full", statusConfig[ticket.status].color)} />
                       <CardHeader className="pb-3">
                         <div className="flex justify-between items-start gap-4">

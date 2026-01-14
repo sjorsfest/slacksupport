@@ -619,11 +619,11 @@ export default function WidgetFrame() {
                         onClick={handleSendMessage}
                         disabled={!inputValue.trim() || messageFetcher.state !== "idle"}
                         className={cn(
-                          "absolute right-1.5 bottom-1.5 h-9 w-9 rounded-full transition-all duration-200 shadow-sm bg-secondary border-0",
+                          "absolute right-1.5 bottom-1.5 h-10 w-10 rounded-full transition-all duration-200 shadow-sm bg-secondary border-0",
                           inputValue.trim() ? "scale-100 opacity-100" : "scale-90 opacity-0"
                         )}
                       >
-                        <Send className="w-4 h-4 text-white" />
+                        <Send className="w-5 h-5 text-white" />
                       </Button>
                     </div>
                   )}

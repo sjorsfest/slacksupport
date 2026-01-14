@@ -60,6 +60,7 @@ export default function WidgetSettings() {
   const [domains, setDomains] = useState(allowedDomains);
   const [newDomain, setNewDomain] = useState("");
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<"settings" | "preview">("settings");
 
   const configFetcher = useFetcher();
   const domainsFetcher = useFetcher();
@@ -148,25 +149,51 @@ export default function WidgetSettings() {
   };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="p-4 lg:p-8 max-w-6xl mx-auto pb-24 lg:pb-8">
+      <div className="mb-6 lg:mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-4xl font-bold text-secondary mb-2">
+          <h1 className="font-display text-3xl lg:text-4xl font-bold text-secondary mb-2">
             Widget Studio
           </h1>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-base lg:text-lg">
             Customize your widget to match your brand's vibe 🎨
           </p>
         </div>
-        <Badge variant="fun" className="text-base px-4 py-1">
-          <Sparkles className="w-4 h-4 mr-2" />
-          Live Preview
-        </Badge>
+        
+        {/* Mobile Tabs */}
+        <div className="flex xl:hidden bg-muted p-1 rounded-xl">
+          <button
+            onClick={() => setActiveTab("settings")}
+            className={cn(
+              "flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+              activeTab === "settings" 
+                ? "bg-white text-foreground shadow-sm" 
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Settings
+          </button>
+          <button
+            onClick={() => setActiveTab("preview")}
+            className={cn(
+              "flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2",
+              activeTab === "preview" 
+                ? "bg-white text-foreground shadow-sm" 
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Sparkles className="w-4 h-4" />
+            Preview
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
         {/* Settings Column */}
-        <div className="xl:col-span-7 space-y-6">
+        <div className={cn(
+          "xl:col-span-7 space-y-6",
+          activeTab === "settings" ? "block" : "hidden xl:block"
+        )}>
           <Card className="border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300">
             <CardHeader>
               <div className="flex items-center gap-2 mb-1">
@@ -399,7 +426,10 @@ export default function WidgetSettings() {
         </div>
 
         {/* Preview Column */}
-        <div className="xl:col-span-5">
+        <div className={cn(
+          "xl:col-span-5",
+          activeTab === "preview" ? "block" : "hidden xl:block"
+        )}>
           <div className="sticky top-8">
             <div className="relative mx-auto border-gray-800 dark:border-gray-800 bg-gray-900 border-[14px] rounded-[2.5rem] h-[600px] w-[300px] shadow-xl">
               <div className="w-[148px] h-[18px] bg-gray-800 top-0 rounded-b-[1rem] left-1/2 -translate-x-1/2 absolute"></div>

@@ -71,19 +71,21 @@ export default function DashboardLayout() {
   };
 
   return (
-    <div className="min-h-screen flex bg-background font-sans">
-      {/* Fun Sidebar */}
-      <aside className="w-20 lg:w-72 m-4 rounded-3xl bg-card border border-border shadow-xl flex flex-col overflow-hidden transition-all duration-300">
+    <div className="h-screen flex flex-col lg:flex-row bg-background font-sans overflow-hidden">
+      {/* Fun Sidebar - Desktop Only */}
+      <aside className="hidden lg:flex w-72 m-4 rounded-3xl bg-card border border-border shadow-xl flex-col overflow-hidden transition-all duration-300 h-[calc(100vh-2rem)] flex-shrink-0">
         {/* Header */}
         <div className="p-6 border-b border-border/50">
           <div className="flex items-center gap-3">
             <div className="relative group">
-              <div className="w-12 h-12 bg-secondary rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                <Sparkles className="w-6 h-6 text-white animate-pulse" />
-              </div>
+              <img 
+                src="/static/donkey.png" 
+                alt="Donkey Support" 
+                className="w-14 h-14 object-contain group-hover:scale-110 transition-transform duration-300" 
+              />
               <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white animate-bounce-subtle" />
             </div>
-            <div className="hidden lg:block">
+            <div>
               <h1 className="font-display text-xl font-bold text-secondary">
                 Donkey Support
               </h1>
@@ -111,7 +113,7 @@ export default function DashboardLayout() {
                   className={cn(
                     "relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group overflow-hidden",
                     isActive 
-                      ? "bg-primary/10 text-primary shadow-sm" 
+                      ? "bg-primary/10 text-primary-700 shadow-sm" 
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
@@ -124,14 +126,14 @@ export default function DashboardLayout() {
                     />
                   )}
                   
-                  <item.icon className={cn("w-5 h-5 relative z-10 transition-transform group-hover:scale-110 group-hover:rotate-3", isActive ? "text-primary" : item.color)} />
+                  <item.icon className={cn("w-5 h-5 relative z-10 transition-transform group-hover:scale-110 group-hover:rotate-3", isActive ? "text-primary-700" : item.color)} />
                   
-                  <span className="font-medium relative z-10 hidden lg:block">
+                  <span className="font-medium relative z-10">
                     {item.label}
                   </span>
                   
                   {item.path === '/tickets' && account?._count?.tickets ? (
-                    <Badge variant="fun" className="ml-auto relative z-10 hidden lg:flex">
+                    <Badge variant="fun" className="ml-auto relative z-10">
                       {account._count.tickets}
                     </Badge>
                   ) : null}
@@ -150,8 +152,8 @@ export default function DashboardLayout() {
               </AvatarFallback>
             </Avatar>
             
-            <div className="flex-1 min-w-0 hidden lg:block">
-              <div className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-bold text-foreground truncate group-hover:-700 transition-colors">
                 {user.name || "Support Hero"}
               </div>
               <div className="text-xs text-muted-foreground truncate">
@@ -163,7 +165,7 @@ export default function DashboardLayout() {
               onClick={handleLogout}
               variant="ghost"
               size="icon"
-              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 hidden lg:flex"
+              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               title="Sign out"
             >
               <LogOut className="w-5 h-5" />
@@ -173,14 +175,60 @@ export default function DashboardLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 m-4 ml-0 rounded-3xl bg-white/50 border border-white/20 shadow-xl backdrop-blur-sm overflow-hidden flex flex-col relative">
+      <main className="flex-1 m-0 lg:m-4 lg:ml-0 rounded-none lg:rounded-3xl bg-white/50 border-x-0 lg:border border-white/20 shadow-none lg:shadow-xl backdrop-blur-sm overflow-hidden flex flex-col relative pb-20 lg:pb-0">
+        {/* Mobile Header */}
+        <div className="lg:hidden p-4 border-b border-border/50 bg-white/80 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between">
+           <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-secondary rounded-lg flex items-center justify-center shadow-sm">
+                <Sparkles className="w-4 h-4 text-white" />
+              </div>
+              <h1 className="font-display text-lg font-bold text-secondary">
+                Donkey Support
+              </h1>
+           </div>
+           <Avatar className="h-8 w-8 border border-white shadow-sm" onClick={handleLogout}>
+              <AvatarFallback className="bg-gradient-to-br from-secondary to-orange-400 text-white text-xs font-bold">
+                {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+        </div>
+
         {/* Decorative background elements */}
         <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
         
-        <div className="flex-1 overflow-auto p-6 relative z-10">
+        <div className="flex-1 overflow-auto p-4 lg:p-6 relative z-10">
           <Outlet />
         </div>
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-border shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] z-50 pb-safe">
+        <div className="flex items-center justify-around p-2">
+          {navItems.map((item) => {
+            const isActive = location.pathname.startsWith(item.path);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  "flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 min-w-[4rem]",
+                  isActive ? "text-primary-700" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <div className={cn(
+                  "p-1.5 rounded-lg transition-colors",
+                  isActive ? "bg-primary/10" : "bg-transparent"
+                )}>
+                  <item.icon className={cn("w-6 h-6", isActive ? "text-primary" : item.color)} />
+                </div>
+                <span className="text-[10px] font-medium">
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }

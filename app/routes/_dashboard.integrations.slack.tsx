@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useLoaderData, useSearchParams, useFetcher } from 'react-router';
 import type { LoaderFunctionArgs } from 'react-router';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Slack as SlackIcon, Hash, Zap, CheckCircle2, XCircle, Link2Off, Send } from 'lucide-react';
+
 import { requireUser } from '~/lib/auth.server';
 import { prisma } from '~/lib/db.server';
 import { settings } from '~/lib/settings.server';
@@ -14,6 +17,7 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import { Select } from "~/components/ui/select";
+import { cn } from "~/lib/utils";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -123,74 +127,101 @@ export default function SlackIntegration() {
   };
 
   return (
-    <div className="p-8 max-w-3xl">
-      <div className="mb-8">
-        <h1 className="font-display text-3xl fun-gradient-text">Slack Integration</h1>
-        <p className="text-slate-600 mt-1">
-          Connect your workspace to respond to tickets in seconds.
+    <div className="p-4 lg:p-8 max-w-4xl mx-auto pb-24 lg:pb-8">
+      <div className="mb-6 lg:mb-8">
+        <h1 className="font-display text-3xl lg:text-4xl font-bold text-secondary mb-2">
+          Slack Integration
+        </h1>
+        <p className="text-muted-foreground text-base lg:text-lg">
+          Connect your workspace to respond to tickets in seconds ⚡
         </p>
       </div>
 
-      {success && (
-        <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl flex items-center gap-3">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Slack connected successfully!
-        </div>
-      )}
+      <AnimatePresence mode="wait">
+        {success && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl flex items-center gap-3"
+          >
+            <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+            Slack connected successfully!
+          </motion.div>
+        )}
 
-      {error && (
-        <div className="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl">
-          Failed to connect Slack: {error.replace(/_/g, ' ')}
-        </div>
-      )}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl flex items-center gap-3"
+          >
+            <XCircle className="w-5 h-5 flex-shrink-0" />
+            Failed to connect Slack: {error.replace(/_/g, ' ')}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {!installation ? (
-        <Card className="text-center">
-          <CardHeader className="text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-2xl mb-4 mx-auto">
-              <svg className="w-8 h-8 text-primary" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>
-              </svg>
-            </div>
-            <CardTitle>Connect to Slack</CardTitle>
-            <CardDescription>
-              Install the app to receive ticket notifications and respond from Slack.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <a
-              href={`${baseUrl}/slack/install?account_id=${accountId}`}
-              className="inline-flex"
-            >
-              <Button className="gap-2">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52z"/>
-                </svg>
-                Add to Slack
-              </Button>
-            </a>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          <Card>
-            <CardHeader className="flex items-center justify-between">
-              <div>
-                <CardTitle>Connected Workspace</CardTitle>
-                <CardDescription>Your Slack workspace is live.</CardDescription>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Card className="text-center border-border shadow-sm hover:shadow-md transition-shadow duration-300">
+            <CardHeader className="text-center">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-primary/10 rounded-2xl mb-4 mx-auto">
+                <SlackIcon className="w-10 h-10 text-primary" />
               </div>
-              <Badge variant="success">Connected</Badge>
+              <CardTitle>Connect to Slack</CardTitle>
+              <CardDescription>
+                Install the app to receive ticket notifications and respond from Slack.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center">
+              <a
+                href={`${baseUrl}/slack/install?account_id=${accountId}`}
+                className="inline-flex"
+              >
+                <Button className="gap-2 bg-secondary hover:bg-secondary/90 text-white">
+                  <SlackIcon className="w-5 h-5" />
+                  Add to Slack
+                </Button>
+              </a>
+            </CardContent>
+          </Card>
+        </motion.div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="space-y-6"
+        >
+          <Card className="border-border shadow-sm hover:shadow-md transition-shadow duration-300">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-emerald-100 rounded-lg">
+                    <SlackIcon className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <CardTitle>Connected Workspace</CardTitle>
+                    <CardDescription>Your Slack workspace is live.</CardDescription>
+                  </div>
+                </div>
+                <Badge variant="success">Connected</Badge>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white font-bold text-lg">
+                <div className="w-12 h-12 bg-secondary rounded-2xl flex items-center justify-center text-white font-bold text-lg">
                   {installation.slackTeamName[0].toUpperCase()}
                 </div>
                 <div>
-                  <div className="font-medium text-slate-900">{installation.slackTeamName}</div>
-                  <div className="text-sm text-slate-500">
+                  <div className="font-medium text-foreground">{installation.slackTeamName}</div>
+                  <div className="text-sm text-muted-foreground">
                     Connected {new Date(installation.installedAt).toLocaleDateString()}
                   </div>
                 </div>
@@ -198,25 +229,31 @@ export default function SlackIntegration() {
               <div className="mt-4 pt-4 border-t border-border">
                 <Button
                   variant="ghost"
-                  className="text-rose-600 hover:text-rose-700"
+                  className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 gap-2"
                   onClick={handleDisconnect}
                 >
+                  <Link2Off className="w-4 h-4" />
                   Disconnect Slack
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-border shadow-sm hover:shadow-md transition-shadow duration-300">
             <CardHeader>
-              <CardTitle>Notification Channel</CardTitle>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Hash className="w-5 h-5 text-blue-600" />
+                </div>
+                <CardTitle>Notification Channel</CardTitle>
+              </div>
               <CardDescription>
                 Choose where new ticket notifications should be posted.
               </CardDescription>
             </CardHeader>
             <CardContent>
               {loadingChannels ? (
-                <div className="flex items-center gap-2 text-slate-500">
+                <div className="flex items-center gap-2 text-muted-foreground">
                   <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -239,12 +276,14 @@ export default function SlackIntegration() {
                   </Select>
 
                   {selected && (
-                    <div className="flex items-center gap-2 text-sm text-emerald-600">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex items-center gap-2 text-sm text-emerald-600"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
                       Tickets will be posted to #{selected.name}
-                    </div>
+                    </motion.div>
                   )}
                 </div>
               )}
@@ -252,9 +291,14 @@ export default function SlackIntegration() {
           </Card>
 
           {selected && (
-            <Card>
+            <Card className="border-border shadow-sm hover:shadow-md transition-shadow duration-300">
               <CardHeader>
-                <CardTitle>Test Connection</CardTitle>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <Send className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <CardTitle>Test Connection</CardTitle>
+                </div>
                 <CardDescription>
                   Send a test message to verify the integration.
                 </CardDescription>
@@ -263,22 +307,28 @@ export default function SlackIntegration() {
                 <Button
                   onClick={handleTestPost}
                   disabled={isTesting}
-                  variant="secondary"
+                  className="bg-secondary hover:bg-secondary/90 text-white"
                 >
                   {isTesting ? 'Sending...' : 'Send Test Message'}
                 </Button>
 
                 {testResult && (
-                  <div className={`mt-3 p-3 rounded-xl text-sm ${
-                    testResult.success ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
-                  }`}>
+                  <motion.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={cn(
+                      "mt-3 p-3 rounded-xl text-sm flex items-center gap-2",
+                      testResult.success ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                    )}
+                  >
+                    {testResult.success ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
                     {testResult.message}
-                  </div>
+                  </motion.div>
                 )}
               </CardContent>
             </Card>
           )}
-        </div>
+        </motion.div>
       )}
     </div>
   );
