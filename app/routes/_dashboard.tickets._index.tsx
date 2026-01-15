@@ -128,7 +128,7 @@ export default function TicketsIndex() {
     <div className="p-4 lg:p-8 max-w-6xl mx-auto pb-24 lg:pb-8">
       <div className="mb-6 lg:mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl lg:text-4xl font-bold text-secondary mb-2">
+          <h1 className="font-display text-3xl lg:text-4xl font-bold text-secondary-300 mb-2">
             Support Tickets
           </h1>
           <p className="text-muted-foreground text-base lg:text-lg">

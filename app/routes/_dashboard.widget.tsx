@@ -19,6 +19,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { Label } from "~/components/ui/label";
+import { ColorPicker } from "~/components/ui/color-picker";
 import { cn } from "~/lib/utils";
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -152,7 +153,7 @@ export default function WidgetSettings() {
     <div className="p-4 lg:p-8 max-w-6xl mx-auto pb-24 lg:pb-8">
       <div className="mb-6 lg:mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl lg:text-4xl font-bold text-secondary mb-2">
+          <h1 className="font-display text-3xl lg:text-4xl font-bold text-secondary-300 mb-2">
             Widget Studio
           </h1>
           <p className="text-muted-foreground text-base lg:text-lg">
@@ -229,53 +230,19 @@ export default function WidgetSettings() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label>Primary Color (Backgrounds)</Label>
-                  <div className="flex gap-3">
-                    <div className="relative group">
-                      <input
-                        type="color"
-                        value={primaryColor}
-                        onChange={(e) => setPrimaryColor(e.target.value)}
-                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                      />
-                      <div 
-                        className="w-12 h-12 rounded-xl border-2 border-border shadow-sm group-hover:scale-105 transition-transform"
-                        style={{ backgroundColor: primaryColor }}
-                      />
-                    </div>
-                    <Input
-                      value={primaryColor}
-                      onChange={(e) => setPrimaryColor(e.target.value)}
-                      className="font-mono uppercase"
-                      maxLength={7}
-                    />
-                  </div>
-                </div>
+                <ColorPicker
+                  label="Primary Color (Backgrounds)"
+                  description="Widget button & header"
+                  value={primaryColor}
+                  onChange={setPrimaryColor}
+                />
 
-                <div className="space-y-2">
-                  <Label>Accent Color (Buttons/Highlights)</Label>
-                  <div className="flex gap-3">
-                    <div className="relative group">
-                      <input
-                        type="color"
-                        value={accentColor}
-                        onChange={(e) => setAccentColor(e.target.value)}
-                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                      />
-                      <div 
-                        className="w-12 h-12 rounded-xl border-2 border-border shadow-sm group-hover:scale-105 transition-transform"
-                        style={{ backgroundColor: accentColor }}
-                      />
-                    </div>
-                    <Input
-                      value={accentColor}
-                      onChange={(e) => setAccentColor(e.target.value)}
-                      className="font-mono uppercase"
-                      maxLength={7}
-                    />
-                  </div>
-                </div>
+                <ColorPicker
+                  label="Accent Color (Buttons/Highlights)"
+                  description="Send button & links"
+                  value={accentColor}
+                  onChange={setAccentColor}
+                />
               </div>
 
               <Button
@@ -459,7 +426,8 @@ export default function WidgetSettings() {
                   >
                     {/* Widget Header */}
                     <div 
-                      className="p-4 text-white bg-secondary"
+                      className="p-4 text-white"
+                      style={{ backgroundColor: primaryColor }}
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
@@ -477,7 +445,7 @@ export default function WidgetSettings() {
                       <div className="flex-1 flex items-center justify-center text-center p-4">
                         <div>
                           <div className="text-2xl mb-2">👋</div>
-                          <p className="font-bold text-secondary-900 mb-1">Hi there!</p>
+                          <p className="font-bold mb-1" style={{ color: accentColor }}>Hi there!</p>
                           <p className="text-xs text-slate-500">{greetingText}</p>
                         </div>
                       </div>
