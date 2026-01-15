@@ -73,7 +73,7 @@ export default function DashboardLayout() {
   return (
     <div className="h-screen flex flex-col lg:flex-row bg-background font-sans overflow-hidden">
       {/* Fun Sidebar - Desktop Only */}
-      <aside className="hidden lg:flex w-72 m-4 rounded-3xl bg-card border border-border shadow-xl flex-col overflow-hidden transition-all duration-300 h-[calc(100vh-2rem)] flex-shrink-0">
+      <aside className="hidden lg:flex w-72 m-4 rounded-3xl bg-card border border-black shadow-xl flex-col overflow-hidden transition-all duration-300 h-[calc(100vh-2rem)] flex-shrink-0">
         {/* Header */}
         <div className="p-6 border-b border-border/50">
           <div className="flex items-center gap-3">
@@ -144,7 +144,7 @@ export default function DashboardLayout() {
         </nav>
 
         {/* User Profile */}
-        <div className="p-4 border-t border-border/50 bg-muted/30">
+        <div className="p-4 border-t border-border/50 bg-muted/20">
           <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/50 transition-colors cursor-pointer group">
             <Avatar className="h-10 w-10 border-2 border-white shadow-sm group-hover:scale-105 transition-transform">
               <AvatarFallback className="bg-gradient-to-br from-secondary to-orange-400 text-white font-bold">
@@ -175,7 +175,7 @@ export default function DashboardLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 m-0 lg:m-4 lg:ml-0 rounded-none lg:rounded-3xl bg-white/50 border-x-0 lg:border border-white/20 shadow-none lg:shadow-xl backdrop-blur-sm overflow-hidden flex flex-col relative pb-20 lg:pb-0">
+      <main className="flex-1 m-0 lg:m-4 lg:ml-0 rounded-none lg:rounded-3xl bg-white/90 border-x-0 lg:border border-black shadow-none lg:shadow-xl backdrop-blur-sm overflow-hidden flex flex-col relative pb-20 lg:pb-0">
         {/* Mobile Header */}
         <div className="lg:hidden p-4 border-b border-border/50 bg-white/80 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between">
            <div className="flex items-center gap-2">
