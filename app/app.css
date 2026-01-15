@@ -45,7 +45,7 @@
   --color-secondary-800: #9D174D;
   --color-secondary-900: #831843;
   --color-secondary-950: #500724;
-  --color-secondary: var(--color-secondary-500);
+  --color-secondary: var(--color-secondary-400);
   --color-secondary-foreground: var(--secondary-foreground);
   
   --color-muted: var(--muted);
@@ -164,6 +164,14 @@ html,
 body {
   @apply bg-background text-foreground antialiased font-sans;
   overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  text-shadow: 
+    -1px -1px 0 black,
+     1px -1px 0 black,
+    -1px  1px 0 black,
+     1px  1px 0 black;
 }
 
 /* Fun Pink Background Pattern */

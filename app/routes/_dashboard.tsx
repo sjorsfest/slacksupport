@@ -76,17 +76,17 @@ export default function DashboardLayout() {
       <aside className="hidden lg:flex w-72 m-4 rounded-3xl bg-card border border-black shadow-xl flex-col overflow-hidden transition-all duration-300 h-[calc(100vh-2rem)] flex-shrink-0">
         {/* Header */}
         <div className="p-6 border-b border-border/50">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center space-x-[-1rem]">
             <div className="relative group">
               <img 
                 src="/static/donkey.png" 
                 alt="Donkey Support" 
-                className="w-14 h-14 object-contain group-hover:scale-110 transition-transform duration-300" 
+                className="w-15 h-15 object-contain group-hover:scale-110 transition-transform duration-300" 
               />
               <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white animate-bounce-subtle" />
             </div>
             <div>
-              <h1 className="font-display text-xl font-bold text-secondary">
+              <h1 className="font-display text-4xl font-bold text-primary-500 text-center leading-[0.8] w-fit mx-auto tracking-tighter">
                 Donkey Support
               </h1>
               {account?.slackInstallation && (
@@ -179,10 +179,15 @@ export default function DashboardLayout() {
         {/* Mobile Header */}
         <div className="lg:hidden p-4 border-b border-border/50 bg-white/80 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between">
            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-secondary rounded-lg flex items-center justify-center shadow-sm">
-                <Sparkles className="w-4 h-4 text-white" />
+              <div className="relative">
+                <img 
+                  src="/static/donkey.png" 
+                  alt="Donkey Support" 
+                  className="w-10 h-10 object-contain" 
+                />
+                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-bounce-subtle" />
               </div>
-              <h1 className="font-display text-lg font-bold text-secondary">
+              <h1 className="font-display text-lg font-bold text-primary">
                 Donkey Support
               </h1>
            </div>

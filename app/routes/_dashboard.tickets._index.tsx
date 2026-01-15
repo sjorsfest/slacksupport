@@ -174,17 +174,21 @@ export default function TicketsIndex() {
       </div>
 
       {tickets.length === 0 ? (
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center py-20"
-        >
-          <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce-subtle">
-            <MessageSquare className="w-10 h-10 text-muted-foreground/50" />
-          </div>
-          <h3 className="text-2xl font-display font-bold text-foreground mb-2">No tickets found</h3>
-          <p className="text-muted-foreground">It's quiet... too quiet? 🌵</p>
-        </motion.div>
+        <Card className="border-border shadow-sm overflow-hidden">
+          <CardContent className="py-20">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center"
+            >
+              <div className="w-24 h-24 bg-muted rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce-subtle">
+                <MessageSquare className="w-10 h-10 text-muted-foreground/50" />
+              </div>
+              <h3 className="text-2xl font-display font-bold text-secondary-100 mb-2">No tickets found</h3>
+              <p className="text-muted-foreground">It's quiet... too quiet? 🌵</p>
+            </motion.div>
+          </CardContent>
+        </Card>
       ) : (
         <motion.div 
           variants={container}
@@ -210,7 +214,7 @@ export default function TicketsIndex() {
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <h3 className="font-bold text-foreground line-clamp-1">
+                              <h3 className="font-bold text-white line-clamp-1">
                                 {ticket.visitor.name || 'Anonymous Visitor'}
                               </h3>
                               <p className="text-xs text-muted-foreground">

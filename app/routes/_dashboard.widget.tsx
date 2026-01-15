@@ -477,7 +477,7 @@ export default function WidgetSettings() {
                       <div className="flex-1 flex items-center justify-center text-center p-4">
                         <div>
                           <div className="text-2xl mb-2">👋</div>
-                          <h3 className="font-bold text-slate-800 mb-1">Hi there!</h3>
+                          <p className="font-bold text-secondary-900 mb-1">Hi there!</p>
                           <p className="text-xs text-slate-500">{greetingText}</p>
                         </div>
                       </div>

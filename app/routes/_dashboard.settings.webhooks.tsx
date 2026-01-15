@@ -311,7 +311,7 @@ export default function WebhooksSettings() {
                         exit={{ opacity: 0, height: 0 }}
                         className="border-t border-border bg-muted/30 p-6"
                       >
-                        <h3 className="text-sm font-medium text-foreground mb-3">Recent Deliveries</h3>
+                        <h3 className="text-sm font-medium text-white mb-3">Recent Deliveries</h3>
                         {loadingDeliveries ? (
                           <div className="text-sm text-muted-foreground">Loading...</div>
                         ) : deliveries.length === 0 ? (
