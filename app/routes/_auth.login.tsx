@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useFetcher } from "react-router";
 import type { ActionFunctionArgs } from "react-router";
-import { Sparkles } from "lucide-react";
 import { login } from "~/lib/auth.server";
 import { loginSchema } from "~/types/schemas";
 import { Button } from "~/components/ui/button";
@@ -59,17 +58,19 @@ export default function Login() {
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
+      <div className="bg-white p-8 rounded-3xl shadow-xl border border-black">
         <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-secondary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 transform rotate-3">
-            <Sparkles className="w-6 h-6 text-secondary" />
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 transform rotate-3 overflow-hidden">
+            <img
+              src="/static/donkey.png"
+              alt="Donkey Support"
+              className="w-16 h-16 object-contain"
+            />
           </div>
-          <h2 className="font-display text-3xl font-bold text-slate-900 mb-2">
+          <h2 className="font-display text-3xl font-bold text-primary mb-2">
             Welcome back! 👋
           </h2>
-          <p className="text-slate-500">
-            Ready to make your customers smile?
-          </p>
+          <p className="text-slate-500">Ready to make your customers smile?</p>
         </div>
 
         {error && (
@@ -104,8 +105,8 @@ export default function Login() {
               >
                 Password
               </label>
-              <Link 
-                to="/forgot-password" 
+              <Link
+                to="/forgot-password"
                 className="text-xs font-medium text-slate-400 hover:text-secondary transition-colors"
               >
                 Forgot?
@@ -126,7 +127,7 @@ export default function Login() {
             disabled={isLoading}
             className={cn(
               "w-full h-11 text-base font-bold rounded-xl shadow-lg shadow-secondary/20 transition-all duration-200",
-              "bg-secondary hover:bg-secondary/90 hover:scale-[1.02] active:scale-[0.98]",
+              "bg-secondary hover:bg-secondary/90 text-white hover:scale-[1.02] active:scale-[0.98]",
               isLoading && "opacity-70 cursor-not-allowed"
             )}
           >

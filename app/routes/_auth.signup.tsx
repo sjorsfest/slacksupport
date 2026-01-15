@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useFetcher } from "react-router";
-import { Sparkles } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/utils";
@@ -34,10 +33,14 @@ export default function Signup() {
     <div className="w-full max-w-md mx-auto">
       <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
         <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-secondary/10 rounded-2xl flex items-center justify-center mx-auto mb-4 transform -rotate-3">
-            <Sparkles className="w-6 h-6 text-secondary" />
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 transform -rotate-3 overflow-hidden">
+            <img
+              src="/static/donkey.png"
+              alt="Donkey Support"
+              className="w-16 h-16 object-contain"
+            />
           </div>
-          <h2 className="font-display text-3xl font-bold text-slate-900 mb-2">
+          <h2 className="font-display text-3xl font-bold text-primary mb-2">
             Create your account
           </h2>
           <p className="text-slate-500">

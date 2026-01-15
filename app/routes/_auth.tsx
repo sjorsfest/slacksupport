@@ -6,11 +6,12 @@ export default function AuthLayout() {
       <div className="relative w-full max-w-4xl grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="hidden lg:flex flex-col justify-between rounded-3xl border border-white/40 bg-white/50 p-8 text-slate-900 shadow-xl backdrop-blur-md">
           <div>
-            <h1 className="font-display text-4xl font-bold mb-4 text-slate-900">
+            <h1 className="font-display text-4xl font-bold mb-4 text-secondary-200">
               Support doesn't have to be boring.
             </h1>
             <p className="text-lg text-slate-600 mb-8 max-w-md">
-              Give your customers a support experience that feels as premium and playful as your product.
+              Give your customers a support experience that feels as premium and
+              playful as your product.
             </p>
           </div>
 
@@ -22,7 +23,7 @@ export default function AuthLayout() {
               <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
               <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
             </div>
-            
+
             {/* Placeholder Content */}
             <div className="absolute inset-0 top-8 bg-slate-50 flex flex-col items-center justify-center p-8 text-center">
               <div className="w-16 h-16 bg-slate-100 rounded-2xl mb-4 border-2 border-dashed border-slate-200 flex items-center justify-center">

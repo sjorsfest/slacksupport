@@ -46,59 +46,89 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // Inject styles
   var styles = document.createElement('style');
   styles.textContent = \`
-    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap');
     
     * {
       box-sizing: border-box;
     }
     
+    :host {
+      --sw-accent: \${config.accentColor || '#FF4FA3'};
+      --sw-accent-light: \${config.accentColor ? config.accentColor + '33' : '#FF4FA333'};
+    }
+    
     .sw-button {
       position: fixed;
-      bottom: 20px;
-      right: 20px;
-      width: 64px;
-      height: 64px;
+      bottom: 24px;
+      right: 24px;
+      width: 72px;
+      height: 72px;
       border-radius: 50%;
-      background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.4), transparent 60%),
-        \${config.accentColor || '#FF4FA3'};
-      border: 2px solid rgba(255, 255, 255, 0.3);
+      background: var(--sw-accent);
+      border: 4px solid #1a1a1a;
       cursor: pointer;
       box-shadow: 
-        0 10px 25px -5px rgba(255, 79, 163, 0.5),
-        0 8px 10px -6px rgba(255, 79, 163, 0.3),
-        inset 0 -5px 10px rgba(0, 0, 0, 0.1);
+        6px 6px 0px 0px #1a1a1a,
+        0 0 0 0 var(--sw-accent-light);
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transition: 
+        transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+        background 0.2s ease;
       z-index: 2147483646;
-      animation: sw-float 6s ease-in-out infinite;
+      animation: sw-bounce-idle 3s ease-in-out infinite;
     }
     
     .sw-button:hover {
-      transform: scale(1.1) rotate(-5deg);
+      transform: scale(1.08) rotate(-8deg);
       box-shadow: 
-        0 15px 30px -5px rgba(255, 79, 163, 0.6),
-        0 10px 15px -5px rgba(255, 79, 163, 0.4),
-        inset 0 -5px 10px rgba(0, 0, 0, 0.1);
+        8px 8px 0px 0px #1a1a1a,
+        0 0 0 8px var(--sw-accent-light);
+      animation: sw-wiggle 0.4s ease-in-out;
     }
     
     .sw-button:active {
-      transform: scale(0.95);
+      transform: scale(0.92) rotate(0deg);
+      box-shadow: 
+        2px 2px 0px 0px #1a1a1a,
+        0 0 0 12px var(--sw-accent-light);
+      transition: 
+        transform 0.1s ease,
+        box-shadow 0.1s ease;
+    }
+    
+    .sw-button.clicked {
+      animation: sw-celebrate 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     
     .sw-button svg {
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
       fill: white;
       transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+      filter: drop-shadow(2px 2px 0px rgba(0,0,0,0.2));
+    }
+    
+    .sw-button:hover svg {
+      transform: scale(1.1);
     }
     
     .sw-button.open {
       transform: rotate(0);
       background: #1f2937;
-      box-shadow: 0 10px 25px -5px rgba(31, 41, 55, 0.5);
+      box-shadow: 
+        4px 4px 0px 0px #1a1a1a,
+        0 0 0 0 transparent;
+      animation: none;
+    }
+    
+    .sw-button.open:hover {
+      transform: scale(1.05) rotate(0);
+      box-shadow: 
+        6px 6px 0px 0px #1a1a1a,
+        0 0 0 6px rgba(31, 41, 55, 0.2);
     }
     
     .sw-button.open svg.chat-icon {
@@ -107,7 +137,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     
     .sw-button.open svg.close-icon {
       display: block;
-      transform: rotate(90deg);
+      animation: sw-spin-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     
     .sw-button:not(.open) svg.chat-icon {
@@ -120,71 +150,76 @@ export async function loader({ request }: LoaderFunctionArgs) {
     
     .sw-badge {
       position: absolute;
-      top: 0;
-      right: 0;
-      min-width: 22px;
-      height: 22px;
-      padding: 0 6px;
+      top: -4px;
+      right: -4px;
+      min-width: 26px;
+      height: 26px;
+      padding: 0 7px;
       border-radius: 999px;
       background: #ef4444;
       color: white;
-      font-size: 12px;
-      font-weight: 700;
+      font-size: 13px;
+      font-weight: 800;
       font-family: "Nunito", sans-serif;
       display: none;
       align-items: center;
       justify-content: center;
-      border: 2px solid white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      animation: sw-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      border: 3px solid #1a1a1a;
+      box-shadow: 3px 3px 0px 0px #1a1a1a;
+      animation: sw-badge-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
     
     .sw-badge.visible {
       display: flex;
+      animation: sw-badge-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), sw-badge-pulse 2s ease-in-out infinite 0.4s;
     }
 
     .sw-tooltip {
       position: fixed;
-      bottom: 95px;
-      right: 20px;
+      bottom: 110px;
+      right: 24px;
       background: white;
-      padding: 12px 20px;
-      border-radius: 16px;
-      border-bottom-right-radius: 4px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+      padding: 14px 22px;
+      border-radius: 20px;
+      border-bottom-right-radius: 6px;
+      border: 3px solid #1a1a1a;
+      box-shadow: 5px 5px 0px 0px #1a1a1a;
       font-family: "Nunito", sans-serif;
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 700;
-      color: #1f2937;
+      color: #1a1a1a;
       pointer-events: none;
       opacity: 0;
       transform: translateY(10px) scale(0.9);
       transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
       z-index: 2147483645;
-      max-width: 200px;
+      max-width: 220px;
     }
 
     .sw-tooltip.visible {
       opacity: 1;
       transform: translateY(0) scale(1);
+      animation: sw-tooltip-bounce 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     
     .sw-frame-container {
       position: fixed;
-      bottom: 100px;
-      right: 20px;
+      bottom: 112px;
+      right: 24px;
       width: 380px;
       height: 600px;
-      max-height: calc(100vh - 120px);
+      max-height: calc(100vh - 130px);
       border-radius: 24px;
       overflow: hidden;
-      box-shadow: 
-        0 25px 50px -12px rgba(0, 0, 0, 0.25),
-        0 0 0 1px rgba(0, 0, 0, 0.05);
+      border: 4px solid #1a1a1a;
+      box-shadow: 8px 8px 0px 0px #1a1a1a;
       opacity: 0;
       transform: translateY(20px) scale(0.96);
       transform-origin: bottom right;
-      transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transition: 
+        opacity 0.25s ease, 
+        transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.3s ease;
       pointer-events: none;
       z-index: 2147483645;
     }
@@ -202,17 +237,129 @@ export async function loader({ request }: LoaderFunctionArgs) {
       background: white;
     }
 
-    @keyframes sw-float {
+    /* Animations */
+    @keyframes sw-bounce-idle {
       0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }
-    }
-
-    @keyframes sw-pop {
-      0% { transform: scale(0); }
-      100% { transform: scale(1); }
+      50% { transform: translateY(-5px); }
     }
     
+    @keyframes sw-wiggle {
+      0%, 100% { transform: scale(1.08) rotate(-8deg); }
+      25% { transform: scale(1.08) rotate(8deg); }
+      50% { transform: scale(1.08) rotate(-6deg); }
+      75% { transform: scale(1.08) rotate(6deg); }
+    }
+    
+    @keyframes sw-celebrate {
+      0% { transform: scale(0.92); }
+      30% { transform: scale(1.15) rotate(-10deg); }
+      50% { transform: scale(1.1) rotate(8deg); }
+      70% { transform: scale(1.12) rotate(-5deg); }
+      100% { transform: scale(1) rotate(0); }
+    }
+    
+    @keyframes sw-spin-in {
+      0% { transform: rotate(0deg) scale(0.5); }
+      100% { transform: rotate(180deg) scale(1); }
+    }
+
+    @keyframes sw-badge-pop {
+      0% { transform: scale(0) rotate(-45deg); }
+      50% { transform: scale(1.3) rotate(10deg); }
+      100% { transform: scale(1) rotate(0deg); }
+    }
+    
+    @keyframes sw-badge-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+    
+    @keyframes sw-tooltip-bounce {
+      0% { transform: translateY(10px) scale(0.9); }
+      50% { transform: translateY(-5px) scale(1.02); }
+      100% { transform: translateY(0) scale(1); }
+    }
+
+    /* Tablet screens */
+    @media (max-width: 768px) {
+      .sw-button {
+        width: 64px;
+        height: 64px;
+        bottom: 20px;
+        right: 20px;
+        border-width: 3px;
+        box-shadow: 5px 5px 0px 0px #1a1a1a;
+      }
+      
+      .sw-button svg {
+        width: 30px;
+        height: 30px;
+      }
+      
+      .sw-badge {
+        min-width: 24px;
+        height: 24px;
+        font-size: 12px;
+        border-width: 3px;
+        box-shadow: 2px 2px 0px 0px #1a1a1a;
+      }
+      
+      .sw-tooltip {
+        bottom: 96px;
+        right: 20px;
+        padding: 12px 18px;
+        font-size: 14px;
+      }
+      
+      .sw-frame-container {
+        bottom: 100px;
+        right: 20px;
+        width: 340px;
+        box-shadow: 6px 6px 0px 0px #1a1a1a;
+      }
+    }
+    
+    /* Mobile screens */
     @media (max-width: 480px) {
+      .sw-button {
+        width: 56px;
+        height: 56px;
+        bottom: 16px;
+        right: 16px;
+        border-width: 3px;
+        box-shadow: 4px 4px 0px 0px #1a1a1a;
+      }
+      
+      .sw-button:hover {
+        box-shadow: 
+          5px 5px 0px 0px #1a1a1a,
+          0 0 0 6px var(--sw-accent-light);
+      }
+      
+      .sw-button svg {
+        width: 26px;
+        height: 26px;
+      }
+      
+      .sw-badge {
+        min-width: 22px;
+        height: 22px;
+        font-size: 11px;
+        border-width: 2px;
+        top: -3px;
+        right: -3px;
+        box-shadow: 2px 2px 0px 0px #1a1a1a;
+      }
+      
+      .sw-tooltip {
+        bottom: 82px;
+        right: 16px;
+        padding: 10px 16px;
+        font-size: 13px;
+        border-width: 2px;
+        box-shadow: 4px 4px 0px 0px #1a1a1a;
+      }
+      
       .sw-frame-container {
         position: fixed;
         top: 0;
@@ -223,11 +370,40 @@ export async function loader({ request }: LoaderFunctionArgs) {
         height: 100%;
         max-height: 100%;
         border-radius: 0;
+        border: none;
+        box-shadow: none;
         z-index: 2147483647;
       }
       
       .sw-frame-container.open ~ .sw-button {
         display: none;
+      }
+    }
+    
+    /* Extra small screens */
+    @media (max-width: 360px) {
+      .sw-button {
+        width: 50px;
+        height: 50px;
+        bottom: 12px;
+        right: 12px;
+        box-shadow: 3px 3px 0px 0px #1a1a1a;
+      }
+      
+      .sw-button svg {
+        width: 24px;
+        height: 24px;
+      }
+      
+      .sw-badge {
+        min-width: 20px;
+        height: 20px;
+        font-size: 10px;
+      }
+      
+      .sw-tooltip {
+        bottom: 72px;
+        right: 12px;
       }
     }
   \`;
@@ -300,6 +476,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // Toggle widget
   function toggle() {
     isOpen = !isOpen;
+    
+    // Add celebration animation on click
+    button.classList.add('clicked');
+    setTimeout(function() {
+      button.classList.remove('clicked');
+    }, 600);
+    
     button.classList.toggle('open', isOpen);
     frameContainer.classList.toggle('open', isOpen);
     button.setAttribute('aria-label', isOpen ? 'Close support chat' : 'Open support chat');

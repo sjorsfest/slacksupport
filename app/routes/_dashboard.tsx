@@ -1,18 +1,24 @@
-import { Link, Outlet, useLocation, useLoaderData, useFetcher } from 'react-router';
-import type { LoaderFunctionArgs } from 'react-router';
-import { motion } from 'framer-motion';
-import { 
-  Ticket, 
-  Slack, 
-  MessageSquare, 
-  Webhook, 
-  LogOut, 
+import {
+  Link,
+  Outlet,
+  useLocation,
+  useLoaderData,
+  useFetcher,
+} from "react-router";
+import type { LoaderFunctionArgs } from "react-router";
+import { motion } from "framer-motion";
+import {
+  Ticket,
+  Slack,
+  MessageSquare,
+  Webhook,
+  LogOut,
   Settings,
-  Sparkles
-} from 'lucide-react';
+  Sparkles,
+} from "lucide-react";
 
-import { requireUser, logout } from '~/lib/auth.server';
-import { prisma } from '~/lib/db.server';
+import { requireUser, logout } from "~/lib/auth.server";
+import { prisma } from "~/lib/db.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
@@ -20,7 +26,7 @@ import { cn } from "~/lib/utils";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
-  
+
   const account = await prisma.account.findUnique({
     where: { id: user.accountId },
     include: {
@@ -30,7 +36,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       _count: {
         select: {
           tickets: {
-            where: { status: 'OPEN' },
+            where: { status: "OPEN" },
           },
         },
       },
@@ -41,13 +47,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export async function action({ request }: LoaderFunctionArgs) {
-  if (request.method === 'POST') {
+  if (request.method === "POST") {
     const headers = await logout(request);
     return new Response(null, {
       status: 302,
       headers: {
         ...Object.fromEntries(headers),
-        Location: '/login',
+        Location: "/login",
       },
     });
   }
@@ -55,10 +61,25 @@ export async function action({ request }: LoaderFunctionArgs) {
 }
 
 const navItems = [
-  { path: '/tickets', label: 'Tickets', icon: Ticket, color: 'text-blue-500' },
-  { path: '/integrations/slack', label: 'Slack', icon: Slack, color: 'text-purple-500' },
-  { path: '/widget', label: 'Widget', icon: MessageSquare, color: 'text-pink-500' },
-  { path: '/settings/webhooks', label: 'Webhooks', icon: Webhook, color: 'text-orange-500' },
+  { path: "/tickets", label: "Tickets", icon: Ticket, color: "text-blue-500" },
+  {
+    path: "/integrations/slack",
+    label: "Slack",
+    icon: Slack,
+    color: "text-purple-500",
+  },
+  {
+    path: "/widget",
+    label: "Widget",
+    icon: MessageSquare,
+    color: "text-pink-500",
+  },
+  {
+    path: "/settings/webhooks",
+    label: "Webhooks",
+    icon: Webhook,
+    color: "text-orange-500",
+  },
 ];
 
 export default function DashboardLayout() {
@@ -67,7 +88,7 @@ export default function DashboardLayout() {
   const fetcher = useFetcher();
 
   const handleLogout = () => {
-    fetcher.submit(null, { method: 'POST', action: '/api/auth/logout' });
+    fetcher.submit(null, { method: "POST", action: "/api/auth/logout" });
   };
 
   return (
@@ -78,10 +99,10 @@ export default function DashboardLayout() {
         <div className="p-6 border-b border-border/50">
           <div className="flex items-center space-x-[-1rem]">
             <div className="relative group">
-              <img 
-                src="/static/donkey.png" 
-                alt="Donkey Support" 
-                className="w-15 h-15 object-contain group-hover:scale-110 transition-transform duration-300" 
+              <img
+                src="/static/donkey.png"
+                alt="Donkey Support"
+                className="w-15 h-15 object-contain group-hover:scale-110 transition-transform duration-300"
               />
               <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white animate-bounce-subtle" />
             </div>
@@ -104,16 +125,12 @@ export default function DashboardLayout() {
           {navItems.map((item) => {
             const isActive = location.pathname.startsWith(item.path);
             return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className="block"
-              >
+              <Link key={item.path} to={item.path} className="block">
                 <div
                   className={cn(
                     "relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group overflow-hidden",
-                    isActive 
-                      ? "bg-primary/10 text-primary-700 shadow-sm" 
+                    isActive
+                      ? "bg-primary/10 text-primary-700 shadow-sm"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
@@ -122,17 +139,26 @@ export default function DashboardLayout() {
                       layoutId="activeNav"
                       className="absolute inset-0 bg-primary/10 rounded-xl"
                       initial={false}
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 30,
+                      }}
                     />
                   )}
-                  
-                  <item.icon className={cn("w-5 h-5 relative z-10 transition-transform group-hover:scale-110 group-hover:rotate-3", isActive ? "text-primary-700" : item.color)} />
-                  
+
+                  <item.icon
+                    className={cn(
+                      "w-5 h-5 relative z-10 transition-transform group-hover:scale-110 group-hover:rotate-3",
+                      isActive ? "text-primary-700" : item.color
+                    )}
+                  />
+
                   <span className="font-medium relative z-10">
                     {item.label}
                   </span>
-                  
-                  {item.path === '/tickets' && account?._count?.tickets ? (
+
+                  {item.path === "/tickets" && account?._count?.tickets ? (
                     <Badge variant="fun" className="ml-auto relative z-10">
                       {account._count.tickets}
                     </Badge>
@@ -151,7 +177,7 @@ export default function DashboardLayout() {
                 {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            
+
             <div className="flex-1 min-w-0">
               <div className="text-sm font-bold text-foreground truncate group-hover:-700 transition-colors">
                 {user.name || "Support Hero"}
@@ -178,29 +204,32 @@ export default function DashboardLayout() {
       <main className="flex-1 m-0 lg:m-4 lg:ml-0 rounded-none lg:rounded-3xl bg-white/90 border-x-0 lg:border border-black shadow-none lg:shadow-xl backdrop-blur-sm overflow-hidden flex flex-col relative pb-20 lg:pb-0">
         {/* Mobile Header */}
         <div className="lg:hidden p-4 border-b border-border/50 bg-white/80 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between">
-           <div className="flex items-center gap-2">
-              <div className="relative">
-                <img 
-                  src="/static/donkey.png" 
-                  alt="Donkey Support" 
-                  className="w-10 h-10 object-contain" 
-                />
-                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-bounce-subtle" />
-              </div>
-              <h1 className="font-display text-lg font-bold text-primary">
-                Donkey Support
-              </h1>
-           </div>
-           <Avatar className="h-8 w-8 border border-white shadow-sm" onClick={handleLogout}>
-              <AvatarFallback className="bg-gradient-to-br from-secondary to-orange-400 text-white text-xs font-bold">
-                {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <img
+                src="/static/donkey.png"
+                alt="Donkey Support"
+                className="w-10 h-10 object-contain"
+              />
+              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-bounce-subtle" />
+            </div>
+            <h1 className="font-display text-lg font-bold text-primary">
+              Donkey Support
+            </h1>
+          </div>
+          <Avatar
+            className="h-8 w-8 border border-white shadow-sm"
+            onClick={handleLogout}
+          >
+            <AvatarFallback className="bg-gradient-to-br from-secondary to-orange-400 text-white text-xs font-bold">
+              {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
         </div>
 
         {/* Decorative background elements */}
         <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
-        
+
         <div className="flex-1 overflow-auto p-4 lg:p-6 relative z-10">
           <Outlet />
         </div>
@@ -217,18 +246,25 @@ export default function DashboardLayout() {
                 to={item.path}
                 className={cn(
                   "flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 min-w-[4rem]",
-                  isActive ? "text-primary-700" : "text-muted-foreground hover:text-foreground"
+                  isActive
+                    ? "text-primary-700"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                <div className={cn(
-                  "p-1.5 rounded-lg transition-colors",
-                  isActive ? "bg-primary/10" : "bg-transparent"
-                )}>
-                  <item.icon className={cn("w-6 h-6", isActive ? "text-primary" : item.color)} />
+                <div
+                  className={cn(
+                    "p-1.5 rounded-lg transition-colors",
+                    isActive ? "bg-primary/10" : "bg-transparent"
+                  )}
+                >
+                  <item.icon
+                    className={cn(
+                      "w-6 h-6",
+                      isActive ? "text-primary" : item.color
+                    )}
+                  />
                 </div>
-                <span className="text-[10px] font-medium">
-                  {item.label}
-                </span>
+                <span className="text-[10px] font-medium">{item.label}</span>
               </Link>
             );
           })}
