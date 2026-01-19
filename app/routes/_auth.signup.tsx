@@ -1,37 +1,124 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate, useFetcher } from "react-router";
+import { useState } from "react";
+import { Link, Form, useActionData, useNavigation, redirect } from "react-router";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { z } from "zod";
+import { auth, getCurrentUser } from "~/lib/auth.server";
+import { prisma } from "~/lib/db.server";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/utils";
 
-export default function Signup() {
-  const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
-  const fetcher = useFetcher();
+const signupSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  companyName: z.string().min(2, "Company name must be at least 2 characters"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
 
-  const isLoading = fetcher.state !== "idle";
+// Redirect already authenticated users to dashboard
+export async function loader({ request }: LoaderFunctionArgs) {
+  const user = await getCurrentUser(request);
+  if (user && user.accountId) {
+    return redirect("/tickets");
+  }
+  return null;
+}
 
-  useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data) {
-      const data = fetcher.data as { error?: string };
-      if (data.error) {
-        setError(data.error);
-      } else {
-        navigate("/onboarding");
-      }
+export async function action({ request }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  const payload = Object.fromEntries(formData);
+
+  const result = signupSchema.safeParse(payload);
+
+  if (!result.success) {
+    return { 
+      errors: result.error.flatten().fieldErrors,
+      error: "Please check your input."
+    };
+  }
+
+  const { email, password, name, companyName } = result.data;
+
+  // Check if user already exists
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (existingUser) {
+    return { 
+      error: "User already exists",
+      code: "USER_ALREADY_EXISTS"
+    };
+  }
+
+  // 1. Create SaaS Account first (before user signup)
+  // This ensures the user is created with accountId already set
+  const account = await prisma.account.create({
+    data: {
+      name: companyName,
+      allowedDomains: [],
+      widgetConfig: {
+        create: {
+          companyName: companyName,
+        },
+      },
+    },
+  });
+
+  // 2. Create User via Better Auth with accountId already set
+  try {
+    const response = await auth.api.signUpEmail({
+      body: {
+        email,
+        password,
+        name,
+        accountId: account.id,
+        role: "admin",
+      },
+      asResponse: true,
+    });
+
+    if (!response.ok) {
+      // Cleanup account if user creation fails
+      await prisma.account.delete({ where: { id: account.id } });
+      const data = await response.clone().json();
+      return { error: data.message || data.error || "Failed to create user" };
     }
-  }, [fetcher.state, fetcher.data, navigate]);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError(null);
-    const formData = new FormData(e.currentTarget);
-    fetcher.submit(formData, { method: "POST", action: "/api/auth/signup" });
-  };
+    const data = await response.clone().json();
+    
+    if (!data?.user?.id) {
+      // Cleanup account if user creation fails
+      await prisma.account.delete({ where: { id: account.id } });
+      return { error: "Failed to create user" };
+    }
+
+    // Return the redirect (contains session headers with correct user data)
+    return redirect("/tickets", {
+      headers: response.headers,
+    });
+  } catch (e) {
+    // Cleanup account if user creation fails
+    await prisma.account.delete({ where: { id: account.id } });
+    console.error("Signup Error:", e);
+    return { error: "An unexpected error occurred" };
+  }
+}
+
+export default function Signup() {
+  const actionData = useActionData<typeof action>();
+  const navigation = useNavigation();
+  
+  const isLoading = navigation.state === "submitting";
+  const errors = actionData?.errors;
+  const generalError = actionData?.error;
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
+      <div
+        className="bg-white p-8 rounded-3xl border-2 border-black"
+        style={{ boxShadow: "4px 4px 0px 0px #1a1a1a" }}
+      >
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 transform -rotate-3 overflow-hidden">
             <img
@@ -48,13 +135,13 @@ export default function Signup() {
           </p>
         </div>
 
-        {error && (
+        {generalError && (
           <div className="mb-6 p-4 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-            <span className="text-lg">⚠️</span> {error}
+            <span className="text-lg">⚠️</span> {generalError}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <Form method="post" className="space-y-5">
           <div className="space-y-1.5">
             <label
               htmlFor="name"
@@ -68,8 +155,14 @@ export default function Signup() {
               name="name"
               required
               placeholder="John Doe"
-              className="h-11 rounded-xl border-slate-200 focus:border-secondary/50 focus:ring-secondary/20 bg-slate-50 focus:bg-white transition-all"
+              className={cn(
+                "h-11 rounded-xl border-slate-200 focus:border-secondary/50 focus:ring-secondary/20 bg-slate-50 focus:bg-white transition-all",
+                errors?.name && "border-rose-300 focus:border-rose-500 focus:ring-rose-200"
+              )}
             />
+            {errors?.name && (
+              <p className="text-xs text-rose-600 ml-1">{errors.name[0]}</p>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -85,8 +178,14 @@ export default function Signup() {
               name="companyName"
               required
               placeholder="Acme Inc."
-              className="h-11 rounded-xl border-slate-200 focus:border-secondary/50 focus:ring-secondary/20 bg-slate-50 focus:bg-white transition-all"
+              className={cn(
+                "h-11 rounded-xl border-slate-200 focus:border-secondary/50 focus:ring-secondary/20 bg-slate-50 focus:bg-white transition-all",
+                errors?.companyName && "border-rose-300 focus:border-rose-500 focus:ring-rose-200"
+              )}
             />
+            {errors?.companyName && (
+              <p className="text-xs text-rose-600 ml-1">{errors.companyName[0]}</p>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -102,8 +201,14 @@ export default function Signup() {
               name="email"
               required
               placeholder="you@company.com"
-              className="h-11 rounded-xl border-slate-200 focus:border-secondary/50 focus:ring-secondary/20 bg-slate-50 focus:bg-white transition-all"
+              className={cn(
+                "h-11 rounded-xl border-slate-200 focus:border-secondary/50 focus:ring-secondary/20 bg-slate-50 focus:bg-white transition-all",
+                errors?.email && "border-rose-300 focus:border-rose-500 focus:ring-rose-200"
+              )}
             />
+            {errors?.email && (
+              <p className="text-xs text-rose-600 ml-1">{errors.email[0]}</p>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -120,9 +225,16 @@ export default function Signup() {
               required
               minLength={8}
               placeholder="••••••••"
-              className="h-11 rounded-xl border-slate-200 focus:border-secondary/50 focus:ring-secondary/20 bg-slate-50 focus:bg-white transition-all"
+              className={cn(
+                "h-11 rounded-xl border-slate-200 focus:border-secondary/50 focus:ring-secondary/20 bg-slate-50 focus:bg-white transition-all",
+                errors?.password && "border-rose-300 focus:border-rose-500 focus:ring-rose-200"
+              )}
             />
-            <p className="text-xs text-slate-500 ml-1">At least 8 characters</p>
+            {errors?.password ? (
+              <p className="text-xs text-rose-600 ml-1">{errors.password[0]}</p>
+            ) : (
+              <p className="text-xs text-slate-500 ml-1">At least 8 characters</p>
+            )}
           </div>
 
           <Button
@@ -130,13 +242,13 @@ export default function Signup() {
             disabled={isLoading}
             className={cn(
               "w-full h-11 text-base font-bold rounded-xl shadow-lg shadow-secondary/20 transition-all duration-200",
-              "bg-secondary hover:bg-secondary/90 hover:scale-[1.02] active:scale-[0.98]",
+              "bg-secondary hover:bg-secondary/90 text-white hover:scale-[1.02] active:scale-[0.98]",
               isLoading && "opacity-70 cursor-not-allowed"
             )}
           >
             {isLoading ? "Creating account..." : "Create account"}
           </Button>
-        </form>
+        </Form>
 
         <div className="mt-8 pt-6 border-t border-slate-100 text-center">
           <p className="text-sm text-slate-500">

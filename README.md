@@ -16,6 +16,7 @@ A multi-tenant SaaS ticketing tool with an embeddable website widget and Slack i
 - **Framework**: React Router 7 (full-stack)
 - **Database**: PostgreSQL (Neon-compatible)
 - **ORM**: Prisma
+- **Auth**: Better Auth (Email/Password + Social)
 - **Job Queue**: BullMQ with Redis
 - **Real-time**: WebSocket + Redis pub/sub
 - **Styling**: Tailwind CSS 4
@@ -55,6 +56,9 @@ Edit `.env` with your values:
 openssl rand -hex 32
 
 # Generate session secret
+openssl rand -base64 32
+
+# Better Auth Secret
 openssl rand -base64 32
 ```
 
@@ -113,13 +117,15 @@ If you ran the seed script:
 slacksupport/
 ├── app/
 │   ├── routes/           # React Router routes
-│   │   ├── _auth.*       # Auth pages (login, signup)
+│   │   ├── _auth.*       # Auth pages (login, signup) with server-side actions
 │   │   ├── _dashboard.*  # Protected dashboard pages
 │   │   ├── api.*         # API endpoints
 │   │   ├── slack.*       # Slack OAuth and events
 │   │   └── widget.*      # Widget loader and frame
 │   ├── lib/              # Server utilities
-│   │   ├── auth.server.ts
+│   │   ├── auth.ts       # Better Auth configuration
+│   │   ├── auth.server.ts # Server-side auth helpers
+│   │   ├── auth-client.ts # Client-side auth client
 │   │   ├── crypto.server.ts
 │   │   ├── db.server.ts
 │   │   ├── redis.server.ts
@@ -166,10 +172,10 @@ Add this snippet to your website:
 
 ### Authentication
 
-- `POST /api/auth/signup` - Create account
-- `POST /api/auth/login` - Sign in
-- `POST /api/auth/logout` - Sign out
-- `GET /api/auth/me` - Get current user
+Authentication is handled by **Better Auth** and React Router server-side actions.
+
+- `POST /signup` - Create account (via `_auth.signup.tsx` action)
+- `POST /login` - Sign in (via `_auth.login.tsx` action)
 
 ### Tickets
 

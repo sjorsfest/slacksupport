@@ -57,17 +57,20 @@ model Account {
 
 // User - Dashboard user belonging to an Account
 model User {
-  id           String   @id @default(cuid())
-  accountId    String
-  email        String   @unique
-  passwordHash String
-  name         String?
-  role         String   @default("member") // admin, member
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String   @id @default(cuid())
+  accountId     String?  // Made optional for OAuth flows
+  email         String   @unique
+  name          String?
+  emailVerified Boolean  @default(false)
+  image         String?
+  password      String?  @map("passwordHash") // Mapped to existing column
+  role          String   @default("member") // admin, member
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  account  Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  sessions Session[]
+  account       Account?      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  sessions      Session[]
+  authAccounts  AuthAccount[]
 
   @@index([accountId])
   @@map("users")
@@ -79,13 +82,49 @@ model Session {
   userId    String
   token     String   @unique
   expiresAt DateTime
+  ipAddress String?
+  userAgent String?
   createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([userId])
   @@map("sessions")
+}
+
+// AuthAccount - OAuth accounts for Better Auth
+model AuthAccount {
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String    // Provider's account ID
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("auth_accounts")
+}
+
+// Verification - For email verification etc.
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verifications")
 }
 
 // SlackInstallation - Stores Slack OAuth tokens for an Account

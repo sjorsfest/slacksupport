@@ -446,9 +446,12 @@ export default function WidgetFrame() {
         <Links />
       </head>
       <body className="h-full bg-transparent overflow-hidden font-sans">
-        <div className="h-full flex flex-col bg-background rounded-3xl overflow-hidden shadow-2xl border border-border/50">
+        <div
+          className="h-full flex flex-col bg-background rounded-2xl overflow-hidden border-[3px] border-black"
+          style={{ boxShadow: "4px 4px 0px 0px #1a1a1a" }}
+        >
           {/* Header */}
-          <div className="p-4 text-white flex items-center justify-between shrink-0 transition-colors duration-300 bg-secondary">
+          <div className="p-4 text-white flex items-center justify-between shrink-0 transition-colors duration-300 bg-secondary border-b-2 border-black">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm shadow-inner">
                 <Sparkles className="w-5 h-5 text-white animate-pulse" />
@@ -465,7 +468,7 @@ export default function WidgetFrame() {
             <Button
               variant="ghost"
               size="icon"
-              className="text-white hover:bg-white/20 hover:text-white rounded-full transition-colors"
+              className="text-white hover:bg-white/20 hover:text-white rounded-full transition-all hover:scale-105 active:scale-95"
               onClick={handleClose}
             >
               <X className="w-6 h-6" />
@@ -477,9 +480,17 @@ export default function WidgetFrame() {
             {showMissingInfoForm && !ticketId ? (
               <div className="absolute inset-0 z-10 bg-slate-50 p-6 flex flex-col justify-center">
                 <div className="text-center mb-8">
-                  <div className="w-20 h-20 bg-white rounded-3xl shadow-lg flex items-center justify-center mx-auto mb-6 animate-bounce-subtle border border-border/50">
+                  <motion.div
+                    className="w-20 h-20 bg-white rounded-3xl shadow-lg flex items-center justify-center mx-auto mb-6 border border-border/50"
+                    animate={{ y: [0, -6, 0] }}
+                    transition={{
+                      duration: 2.5,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                  >
                     <PartyPopper className="w-10 h-10 text-secondary" />
-                  </div>
+                  </motion.div>
                   <h2 className="font-display text-3xl font-bold mb-2 text-primary">
                     Welcome! 👋
                   </h2>
@@ -654,7 +665,7 @@ export default function WidgetFrame() {
                 </div>
 
                 {/* Input Area */}
-                <div className="p-4 bg-white border-t border-slate-100">
+                <div className="p-4 bg-white border-t border-black">
                   {isIdle ? (
                     <div className="text-center">
                       <p className="text-sm text-slate-500 mb-3">
@@ -675,7 +686,7 @@ export default function WidgetFrame() {
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Type a message..."
-                        className="min-h-[3rem] max-h-32 py-3.5 resize-none rounded-2xl pr-12 bg-slate-50 focus:bg-white transition-all border-slate-200 focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary/50"
+                        className="min-h-12 max-h-32 py-3.5 resize-none rounded-2xl pr-12 bg-slate-50 focus:bg-white transition-all border-slate-200 focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary/50"
                         rows={1}
                       />
                       <Button

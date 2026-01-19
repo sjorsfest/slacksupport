@@ -3,7 +3,7 @@ import {
   Outlet,
   useLocation,
   useLoaderData,
-  useFetcher,
+  useNavigate,
 } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
 import { motion } from "framer-motion";
@@ -17,7 +17,8 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import { requireUser, logout } from "~/lib/auth.server";
+import { requireUser } from "~/lib/auth.server";
+import { authClient } from "~/lib/auth-client";
 import { prisma } from "~/lib/db.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -46,20 +47,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return { user, account };
 }
 
-export async function action({ request }: LoaderFunctionArgs) {
-  if (request.method === "POST") {
-    const headers = await logout(request);
-    return new Response(null, {
-      status: 302,
-      headers: {
-        ...Object.fromEntries(headers),
-        Location: "/login",
-      },
-    });
-  }
-  return null;
-}
-
 const navItems = [
   { path: "/tickets", label: "Tickets", icon: Ticket, color: "text-blue-500" },
   {
@@ -85,16 +72,22 @@ const navItems = [
 export default function DashboardLayout() {
   const { user, account } = useLoaderData<typeof loader>();
   const location = useLocation();
-  const fetcher = useFetcher();
+  const navigate = useNavigate();
 
-  const handleLogout = () => {
-    fetcher.submit(null, { method: "POST", action: "/api/auth/logout" });
+  const handleLogout = async () => {
+    await authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          navigate("/login");
+        },
+      },
+    });
   };
 
   return (
     <div className="h-screen flex flex-col lg:flex-row bg-background font-sans overflow-hidden">
       {/* Fun Sidebar - Desktop Only */}
-      <aside className="hidden lg:flex w-72 m-4 rounded-3xl bg-card border border-black shadow-xl flex-col overflow-hidden transition-all duration-300 h-[calc(100vh-2rem)] flex-shrink-0">
+      <aside className="hidden lg:flex w-72 m-4 rounded-3xl bg-card border-2 border-black flex-col overflow-hidden transition-all duration-300 h-[calc(100vh-2rem)] flex-shrink-0" style={{ boxShadow: '4px 4px 0px 0px #1a1a1a' }}>
         {/* Header */}
         <div className="p-6 border-b border-border/50">
           <div className="flex items-center space-x-[-1rem]">
@@ -201,7 +194,7 @@ export default function DashboardLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 m-0 lg:m-4 lg:ml-0 rounded-none lg:rounded-3xl bg-white/90 border-x-0 lg:border border-black shadow-none lg:shadow-xl backdrop-blur-sm overflow-hidden flex flex-col relative pb-20 lg:pb-0">
+      <main className="flex-1 m-0 lg:m-4 lg:ml-0 rounded-none lg:rounded-3xl bg-white/90 border-x-0 lg:border-2 lg:border-black backdrop-blur-sm overflow-hidden flex flex-col relative pb-20 lg:pb-0 lg:[box-shadow:4px_4px_0px_0px_#1a1a1a]">
         {/* Mobile Header */}
         <div className="lg:hidden p-4 border-b border-border/50 bg-white/80 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between">
           <div className="flex items-center gap-2">

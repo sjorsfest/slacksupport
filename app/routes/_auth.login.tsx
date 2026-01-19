@@ -1,64 +1,75 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate, useFetcher } from "react-router";
-import type { ActionFunctionArgs } from "react-router";
-import { login } from "~/lib/auth.server";
-import { loginSchema } from "~/types/schemas";
+import { useState } from "react";
+import { Link, Form, useActionData, useNavigation, redirect } from "react-router";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { authClient } from "~/lib/auth-client";
+import { auth, getCurrentUser } from "~/lib/auth.server";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/utils";
+import { FcGoogle } from "react-icons/fc";
+import { FaXTwitter } from "react-icons/fa6";
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  const user = await getCurrentUser(request);
+  if (user && user.accountId) {
+    return redirect("/tickets");
+  }
+  return null;
+}
 
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
-  try {
-    const data = loginSchema.parse({ email, password });
-    const { headers } = await login(data.email, data.password);
+  if (!email || !password) {
+    return { error: "Email and password are required" };
+  }
 
-    return new Response(null, {
-      status: 302,
-      headers: {
-        ...Object.fromEntries(headers),
-        Location: "/tickets",
+  try {
+    const response = await auth.api.signInEmail({
+      body: {
+        email,
+        password,
       },
+      asResponse: true,
+    });
+
+    if (!response.ok) {
+      try {
+        const data = await response.clone().json();
+        return { error: data.message || data.error || "Invalid email or password" };
+      } catch {
+        return { error: "Invalid email or password" };
+      }
+    }
+
+    return redirect("/tickets", {
+      headers: response.headers,
     });
   } catch (error) {
-    if (error instanceof Error) {
-      return Response.json({ error: error.message }, { status: 400 });
-    }
-    return Response.json({ error: "Login failed" }, { status: 400 });
+    return { error: "An unexpected error occurred" };
   }
 }
 
 export default function Login() {
-  const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
-  const fetcher = useFetcher();
+  const actionData = useActionData<typeof action>();
+  const navigation = useNavigation();
+  const [clientError, setClientError] = useState<string | null>(null);
+  
+  const isLoading = navigation.state === "submitting";
+  const error = actionData?.error || clientError;
 
-  const isLoading = fetcher.state !== "idle";
-
-  useEffect(() => {
-    if (fetcher.state === "idle" && fetcher.data) {
-      const data = fetcher.data as { error?: string };
-      if (data.error) {
-        setError(data.error);
-      } else {
-        navigate("/tickets");
-      }
-    }
-  }, [fetcher.state, fetcher.data, navigate]);
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError(null);
-    const formData = new FormData(e.currentTarget);
-    fetcher.submit(formData, { method: "POST", action: "/api/auth/login" });
+  const handleSocialSignIn = async (provider: "google" | "twitter") => {
+    await authClient.signIn.social({
+      provider,
+      callbackURL: "/tickets",
+    });
   };
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="bg-white p-8 rounded-3xl shadow-xl border border-black">
+      <div className="bg-white p-8 rounded-3xl border-2 border-black" style={{ boxShadow: '4px 4px 0px 0px #1a1a1a' }}>
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 transform rotate-3 overflow-hidden">
             <img
@@ -79,7 +90,36 @@ export default function Login() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-3 mb-6">
+          <Button
+            type="button"
+            onClick={() => handleSocialSignIn("google")}
+            className="w-full h-11 cursor-pointer text-base font-bold rounded-xl border-2 border-transparent bg-white hover:bg-gray-50 text-gray-700 transition-all shadow-sm flex items-center justify-center gap-2"
+            style={{ border: '2px solid #dadce0' }}
+          >
+            <FcGoogle className="w-5 h-5" />
+            Sign in with Google
+          </Button>
+           <Button
+            type="button"
+            onClick={() => handleSocialSignIn("twitter")}
+            className="w-full h-11 cursor-pointer text-base font-bold rounded-xl border-2 border-black bg-black hover:bg-gray-900 text-white transition-all flex items-center justify-center gap-2"
+          >
+            <FaXTwitter className="w-5 h-5" />
+            Sign in with X
+          </Button>
+        </div>
+
+        <div className="relative mb-6">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-slate-200" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-white px-2 text-slate-500 font-bold">Or continue with email</span>
+          </div>
+        </div>
+
+        <Form method="post" className="space-y-5">
           <div className="space-y-1.5">
             <label
               htmlFor="email"
@@ -126,14 +166,14 @@ export default function Login() {
             type="submit"
             disabled={isLoading}
             className={cn(
-              "w-full h-11 text-base font-bold rounded-xl shadow-lg shadow-secondary/20 transition-all duration-200",
+              "w-full h-11 cursor-pointer text-base font-bold rounded-xl shadow-lg shadow-secondary/20 transition-all duration-200",
               "bg-secondary hover:bg-secondary/90 text-white hover:scale-[1.02] active:scale-[0.98]",
-              isLoading && "opacity-70 cursor-not-allowed"
+              isLoading && "opacity-70 !cursor-not-allowed"
             )}
           >
             {isLoading ? "Signing in..." : "Sign in"}
           </Button>
-        </form>
+        </Form>
 
         <div className="mt-8 pt-6 border-t border-slate-100 text-center">
           <p className="text-sm text-slate-500">

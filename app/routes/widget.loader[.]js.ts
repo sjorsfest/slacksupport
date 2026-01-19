@@ -65,10 +65,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
       height: 72px;
       border-radius: 50%;
       background: var(--sw-accent);
-      border: 4px solid #1a1a1a;
+      border: 3px solid #1a1a1a;
       cursor: pointer;
       box-shadow: 
-        6px 6px 0px 0px #1a1a1a,
+        3px 3px 0px 0px #1a1a1a,
         0 0 0 0 var(--sw-accent-light);
       display: flex;
       align-items: center;
@@ -84,16 +84,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
     .sw-button:hover {
       transform: scale(1.08) rotate(-8deg);
       box-shadow: 
-        8px 8px 0px 0px #1a1a1a,
-        0 0 0 8px var(--sw-accent-light);
+        4px 4px 0px 0px #1a1a1a,
+        0 0 0 6px var(--sw-accent-light);
       animation: sw-wiggle 0.4s ease-in-out;
     }
     
     .sw-button:active {
       transform: scale(0.92) rotate(0deg);
       box-shadow: 
-        2px 2px 0px 0px #1a1a1a,
-        0 0 0 12px var(--sw-accent-light);
+        1px 1px 0px 0px #1a1a1a,
+        0 0 0 10px var(--sw-accent-light);
       transition: 
         transform 0.1s ease,
         box-shadow 0.1s ease;
@@ -119,7 +119,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       transform: rotate(0);
       background: #1f2937;
       box-shadow: 
-        4px 4px 0px 0px #1a1a1a,
+        3px 3px 0px 0px #1a1a1a,
         0 0 0 0 transparent;
       animation: none;
     }
@@ -127,8 +127,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     .sw-button.open:hover {
       transform: scale(1.05) rotate(0);
       box-shadow: 
-        6px 6px 0px 0px #1a1a1a,
-        0 0 0 6px rgba(31, 41, 55, 0.2);
+        4px 4px 0px 0px #1a1a1a,
+        0 0 0 5px rgba(31, 41, 55, 0.2);
     }
     
     .sw-button.open svg.chat-icon {
@@ -164,8 +164,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
       display: none;
       align-items: center;
       justify-content: center;
-      border: 3px solid #1a1a1a;
-      box-shadow: 3px 3px 0px 0px #1a1a1a;
+      border: 2px solid #1a1a1a;
+      box-shadow: 2px 2px 0px 0px #1a1a1a;
       animation: sw-badge-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
     
@@ -182,8 +182,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
       padding: 14px 22px;
       border-radius: 20px;
       border-bottom-right-radius: 6px;
-      border: 3px solid #1a1a1a;
-      box-shadow: 5px 5px 0px 0px #1a1a1a;
+      border: 2px solid #1a1a1a;
+      box-shadow: 3px 3px 0px 0px #1a1a1a;
       font-family: "Nunito", sans-serif;
       font-size: 15px;
       font-weight: 700;
@@ -211,8 +211,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
       max-height: calc(100vh - 130px);
       border-radius: 24px;
       overflow: hidden;
-      border: 4px solid #1a1a1a;
-      box-shadow: 8px 8px 0px 0px #1a1a1a;
+      border: 3px solid #1a1a1a;
+      box-shadow: 4px 4px 0px 0px #1a1a1a;
       opacity: 0;
       transform: translateY(20px) scale(0.96);
       transform-origin: bottom right;
@@ -288,7 +288,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         bottom: 20px;
         right: 20px;
         border-width: 3px;
-        box-shadow: 5px 5px 0px 0px #1a1a1a;
+        box-shadow: 3px 3px 0px 0px #1a1a1a;
       }
       
       .sw-button svg {
@@ -300,7 +300,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         min-width: 24px;
         height: 24px;
         font-size: 12px;
-        border-width: 3px;
+        border-width: 2px;
         box-shadow: 2px 2px 0px 0px #1a1a1a;
       }
       
@@ -315,7 +315,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         bottom: 100px;
         right: 20px;
         width: 340px;
-        box-shadow: 6px 6px 0px 0px #1a1a1a;
+        box-shadow: 3px 3px 0px 0px #1a1a1a;
       }
     }
     
@@ -326,14 +326,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
         height: 56px;
         bottom: 16px;
         right: 16px;
-        border-width: 3px;
-        box-shadow: 4px 4px 0px 0px #1a1a1a;
+        border-width: 2px;
+        box-shadow: 2px 2px 0px 0px #1a1a1a;
       }
       
       .sw-button:hover {
         box-shadow: 
-          5px 5px 0px 0px #1a1a1a,
-          0 0 0 6px var(--sw-accent-light);
+          3px 3px 0px 0px #1a1a1a,
+          0 0 0 5px var(--sw-accent-light);
       }
       
       .sw-button svg {
@@ -348,7 +348,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         border-width: 2px;
         top: -3px;
         right: -3px;
-        box-shadow: 2px 2px 0px 0px #1a1a1a;
+        box-shadow: 1px 1px 0px 0px #1a1a1a;
       }
       
       .sw-tooltip {
@@ -357,7 +357,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         padding: 10px 16px;
         font-size: 13px;
         border-width: 2px;
-        box-shadow: 4px 4px 0px 0px #1a1a1a;
+        box-shadow: 2px 2px 0px 0px #1a1a1a;
       }
       
       .sw-frame-container {
@@ -387,7 +387,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         height: 50px;
         bottom: 12px;
         right: 12px;
-        box-shadow: 3px 3px 0px 0px #1a1a1a;
+        box-shadow: 2px 2px 0px 0px #1a1a1a;
       }
       
       .sw-button svg {

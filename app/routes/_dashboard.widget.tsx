@@ -2,7 +2,15 @@ import { useState, useEffect } from "react";
 import { useLoaderData, useFetcher } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Copy, Check, MessageSquare, Palette, Globe, Code } from "lucide-react";
+import {
+  Sparkles,
+  Copy,
+  Check,
+  MessageSquare,
+  Palette,
+  Globe,
+  Code,
+} from "lucide-react";
 
 import { requireUser } from "~/lib/auth.server";
 import { prisma } from "~/lib/db.server";
@@ -61,7 +69,9 @@ export default function WidgetSettings() {
   const [domains, setDomains] = useState(allowedDomains);
   const [newDomain, setNewDomain] = useState("");
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<"settings" | "preview">("settings");
+  const [activeTab, setActiveTab] = useState<"settings" | "preview">(
+    "settings"
+  );
 
   const configFetcher = useFetcher();
   const domainsFetcher = useFetcher();
@@ -160,15 +170,15 @@ export default function WidgetSettings() {
             Customize your widget to match your brand's vibe 🎨
           </p>
         </div>
-        
+
         {/* Mobile Tabs */}
         <div className="flex xl:hidden bg-muted p-1 rounded-xl">
           <button
             onClick={() => setActiveTab("settings")}
             className={cn(
               "flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-              activeTab === "settings" 
-                ? "bg-white text-foreground shadow-sm" 
+              activeTab === "settings"
+                ? "bg-white text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -178,8 +188,8 @@ export default function WidgetSettings() {
             onClick={() => setActiveTab("preview")}
             className={cn(
               "flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2",
-              activeTab === "preview" 
-                ? "bg-white text-foreground shadow-sm" 
+              activeTab === "preview"
+                ? "bg-white text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -191,10 +201,12 @@ export default function WidgetSettings() {
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
         {/* Settings Column */}
-        <div className={cn(
-          "xl:col-span-7 space-y-6",
-          activeTab === "settings" ? "block" : "hidden xl:block"
-        )}>
+        <div
+          className={cn(
+            "xl:col-span-7 space-y-6",
+            activeTab === "settings" ? "block" : "hidden xl:block"
+          )}
+        >
           <Card className="border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300">
             <CardHeader>
               <div className="flex items-center gap-2 mb-1">
@@ -250,7 +262,9 @@ export default function WidgetSettings() {
                 disabled={isSavingConfig}
                 className={cn(
                   "w-full font-bold transition-all duration-300",
-                  saved ? "bg-green-500 hover:bg-green-600 text-white" : "bg-secondary hover:bg-secondary/90 text-white"
+                  saved
+                    ? "bg-green-500 hover:bg-green-600 text-white"
+                    : "bg-secondary hover:bg-secondary/90 text-white"
                 )}
               >
                 {saved ? (
@@ -314,15 +328,25 @@ export default function WidgetSettings() {
                             onClick={() => removeDomain(domain)}
                             className="p-0.5 hover:bg-background rounded-full transition-colors text-muted-foreground hover:text-destructive"
                           >
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            <svg
+                              className="w-3 h-3"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
                             </svg>
                           </button>
                         </Badge>
                       </motion.div>
                     ))
                   ) : (
-                    <motion.p 
+                    <motion.p
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       className="text-sm text-muted-foreground italic flex items-center gap-2"
@@ -345,7 +369,11 @@ export default function WidgetSettings() {
                 <CardTitle>Installation</CardTitle>
               </div>
               <CardDescription>
-                Copy-paste this magic code before the closing <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">&lt;/body&gt;</code> tag.
+                Copy-paste this magic code before the closing{" "}
+                <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">
+                  &lt;/body&gt;
+                </code>{" "}
+                tag.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -393,10 +421,12 @@ export default function WidgetSettings() {
         </div>
 
         {/* Preview Column */}
-        <div className={cn(
-          "xl:col-span-5",
-          activeTab === "preview" ? "block" : "hidden xl:block"
-        )}>
+        <div
+          className={cn(
+            "xl:col-span-5",
+            activeTab === "preview" ? "block" : "hidden xl:block"
+          )}
+        >
           <div className="sticky top-8">
             <div className="relative mx-auto border-gray-800 dark:border-gray-800 bg-gray-900 border-[14px] rounded-[2.5rem] h-[600px] w-[300px] shadow-xl">
               <div className="w-[148px] h-[18px] bg-gray-800 top-0 rounded-b-[1rem] left-1/2 -translate-x-1/2 absolute"></div>
@@ -404,7 +434,7 @@ export default function WidgetSettings() {
               <div className="h-[46px] w-[3px] bg-gray-800 absolute -left-[17px] top-[124px] rounded-l-lg"></div>
               <div className="h-[46px] w-[3px] bg-gray-800 absolute -left-[17px] top-[178px] rounded-l-lg"></div>
               <div className="h-[64px] w-[3px] bg-gray-800 absolute -right-[17px] top-[142px] rounded-r-lg"></div>
-              
+
               <div className="rounded-[2rem] overflow-hidden w-full h-full bg-white relative">
                 {/* Mock Website Content */}
                 <div className="absolute inset-0 bg-slate-50 p-4 overflow-hidden opacity-50 pointer-events-none">
@@ -418,15 +448,16 @@ export default function WidgetSettings() {
 
                 {/* Widget Preview */}
                 <div className="absolute inset-0 pointer-events-none flex flex-col justify-end p-4">
-                  <motion.div 
+                  <motion.div
                     layout
-                    className="bg-white rounded-2xl shadow-2xl overflow-hidden border border-border/50 mb-4 origin-bottom-right"
+                    className="bg-white rounded-2xl overflow-hidden border-2 border-black mb-4 origin-bottom-right"
+                    style={{ boxShadow: "4px 4px 0px 0px #1a1a1a" }}
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                   >
                     {/* Widget Header */}
-                    <div 
-                      className="p-4 text-white"
+                    <div
+                      className="p-4 text-white border-b-2 border-black"
                       style={{ backgroundColor: primaryColor }}
                     >
                       <div className="flex items-center gap-3">
@@ -434,8 +465,12 @@ export default function WidgetSettings() {
                           <Sparkles className="w-4 h-4 text-white" />
                         </div>
                         <div>
-                          <div className="font-bold text-sm">{companyName || "Donkey Support"}</div>
-                          <div className="text-[10px] opacity-90">We reply fast!</div>
+                          <div className="font-bold text-sm">
+                            {companyName || "Donkey Support"}
+                          </div>
+                          <div className="text-[10px] opacity-90">
+                            We reply fast!
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -443,26 +478,43 @@ export default function WidgetSettings() {
                     {/* Widget Body */}
                     <div className="p-4 bg-slate-50 h-64 flex flex-col">
                       <div className="flex-1 flex items-center justify-center text-center p-4">
-                        <div>
+                        <div className="bg-white px-5 py-4 rounded-2xl shadow-sm border border-slate-100">
                           <div className="text-2xl mb-2">👋</div>
-                          <p className="font-bold mb-1" style={{ color: accentColor }}>Hi there!</p>
-                          <p className="text-xs text-slate-500">{greetingText}</p>
+                          <p
+                            className="font-bold mb-1"
+                            style={{ color: accentColor }}
+                          >
+                            Hi there!
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {greetingText}
+                          </p>
                         </div>
                       </div>
                     </div>
 
                     {/* Widget Footer */}
-                    <div className="p-3 border-t border-border bg-white">
+                    <div className="p-3 bg-white border-t border-black">
                       <div className="flex gap-2">
-                        <div className="flex-1 h-9 bg-muted rounded-full px-3 flex items-center text-xs text-muted-foreground">
+                        <div className="flex-1 h-9 bg-slate-50 rounded-full px-3 flex items-center text-xs text-muted-foreground border border-slate-200">
                           Type a message...
                         </div>
-                        <div 
-                          className="w-9 h-9 rounded-full flex items-center justify-center shadow-sm"
+                        <div
+                          className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer shadow-sm"
                           style={{ backgroundColor: accentColor }}
                         >
-                          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                          <svg
+                            className="w-4 h-4 text-white"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                            />
                           </svg>
                         </div>
                       </div>
@@ -471,12 +523,29 @@ export default function WidgetSettings() {
 
                   {/* Widget Toggle Button */}
                   <div className="flex justify-end">
-                    <div 
-                      className="w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white hover:scale-105 transition-transform"
-                      style={{ backgroundColor: primaryColor }}
+                    <motion.div
+                      className="w-14 h-14 rounded-full flex items-center justify-center text-white cursor-pointer border-2 border-black"
+                      style={{
+                        backgroundColor: primaryColor,
+                        boxShadow: "3px 3px 0px 0px #1a1a1a",
+                      }}
+                      whileHover={{
+                        scale: 1.08,
+                        rotate: -8,
+                        boxShadow: "4px 4px 0px 0px #1a1a1a",
+                      }}
+                      whileTap={{
+                        scale: 0.92,
+                        boxShadow: "1px 1px 0px 0px #1a1a1a",
+                      }}
+                      animate={{ y: [0, -4, 0] }}
+                      transition={{
+                        y: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+                        scale: { type: "spring", stiffness: 400, damping: 17 },
+                      }}
                     >
-                      <MessageSquare className="w-7 h-7" />
-                    </div>
+                      <MessageSquare className="w-7 h-7 drop-shadow-[1px_1px_0px_rgba(0,0,0,0.2)]" />
+                    </motion.div>
                   </div>
                 </div>
               </div>
