@@ -13,6 +13,7 @@ export default [
   // Dashboard routes (protected)
   layout("routes/_dashboard.tsx", [
     route("onboarding", "routes/_dashboard.onboarding.tsx"),
+    route("onboarding/subscription", "routes/_dashboard.onboarding.subscription.tsx"),
     route("tickets", "routes/_dashboard.tickets._index.tsx"),
     route("tickets/:id", "routes/_dashboard.tickets.$id.tsx"),
     route("integrations/slack", "routes/_dashboard.integrations.slack.tsx"),
@@ -28,12 +29,19 @@ export default [
   route("api/webhooks", "routes/api.webhooks.$.ts", { id: "api-webhooks-root" }),
   route("api/webhooks/*", "routes/api.webhooks.$.ts", { id: "api-webhooks-subpath" }),
   route("api/slack/*", "routes/api.slack.$.ts"),
+  route("api/stripe", "routes/api.stripe.$.ts", { id: "api-stripe-root" }),
+  route("api/stripe/*", "routes/api.stripe.$.ts", { id: "api-stripe-subpath" }),
   
   // Slack routes
   route("slack/install", "routes/slack.install.ts"),
   route("slack/oauth/callback", "routes/slack.oauth.callback.ts"),
   route("slack/events", "routes/slack.events.ts"),
-  
+
+  // Stripe routes
+  route("stripe/checkout/success", "routes/stripe.checkout.success.tsx"),
+  route("stripe/checkout/cancel", "routes/stripe.checkout.cancel.tsx"),
+  route("stripe/webhooks", "routes/stripe.webhooks.ts"),
+
   // Widget routes
   route("widget/loader.js", "routes/widget.loader[.]js.ts"),
   route("widget/frame", "routes/widget.frame.tsx"),

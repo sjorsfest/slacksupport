@@ -36,6 +36,17 @@ enum WebhookDeliveryStatus {
   failed
 }
 
+enum SubscriptionStatus {
+  incomplete
+  incomplete_expired
+  trialing
+  active
+  past_due
+  canceled
+  unpaid
+  paused
+}
+
 // Account - The SaaS customer organization
 model Account {
   id             String   @id @default(cuid())
@@ -51,6 +62,7 @@ model Account {
   visitors            Visitor[]
   webhookEndpoints    WebhookEndpoint[]
   widgetConfig        WidgetConfig?
+  subscription        Subscription?
 
   @@map("accounts")
 }
@@ -314,4 +326,27 @@ model OAuthState {
 
   @@index([expiresAt])
   @@map("oauth_states")
+}
+
+// Subscription - Stripe subscription for an Account
+model Subscription {
+  id                   String             @id @default(cuid())
+  accountId            String             @unique
+  stripeCustomerId     String             @unique
+  stripeSubscriptionId String?            @unique
+  stripePriceId        String?
+  stripeProductId      String?
+  status               SubscriptionStatus @default(incomplete)
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  canceledAt           DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
+  @@map("subscriptions")
 }

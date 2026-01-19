@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLoaderData, useFetcher } from 'react-router';
+import { useNavigate, useLoaderData, useFetcher, redirect } from 'react-router';
 import type { LoaderFunctionArgs } from 'react-router';
 import { requireUser } from '~/lib/auth.server';
 import { prisma } from '~/lib/db.server';
@@ -17,7 +17,16 @@ import { Input } from "~/components/ui/input";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
-  
+
+  // Check for active subscription
+  const subscription = await prisma.subscription.findUnique({
+    where: { accountId: user.accountId },
+  });
+
+  if (!subscription || !['active', 'trialing'].includes(subscription.status)) {
+    return redirect('/onboarding/subscription');
+  }
+
   const account = await prisma.account.findUnique({
     where: { id: user.accountId },
     include: {
@@ -83,6 +92,7 @@ export default function Onboarding() {
       </div>
 
       <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
+        <Badge variant="muted" className="rounded-full px-4 py-1">0 · Plan</Badge>
         <Badge className="bg-primary text-primary-foreground">1 · Domains</Badge>
         <Badge variant="muted" className="rounded-full px-4 py-1">2 · Slack</Badge>
         <Badge variant="muted" className="rounded-full px-4 py-1">3 · Embed</Badge>

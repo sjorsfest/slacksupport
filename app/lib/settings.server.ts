@@ -16,7 +16,11 @@ export const settings = {
   BASE_URL: process.env.BASE_URL || 'http://localhost:5173',
   NODE_ENV: (process.env.NODE_ENV || 'development') as 'development' | 'production' | 'test',
   PORT: Number(process.env.PORT) || (process.env.NODE_ENV === 'production' ? 3000 : 5173),
-  
+
+  // Stripe
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY!,
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+
   // Serverless detection
   VERCEL: process.env.VERCEL,
   AWS_LAMBDA_FUNCTION_NAME: process.env.AWS_LAMBDA_FUNCTION_NAME,
@@ -33,6 +37,8 @@ const requiredVars: (keyof typeof settings)[] = [
   'SLACK_CLIENT_ID',
   'SLACK_CLIENT_SECRET',
   'SLACK_SIGNING_SECRET',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
 ];
 
 if (settings.NODE_ENV !== 'test') {
