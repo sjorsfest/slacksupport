@@ -29,6 +29,7 @@ import { Textarea } from "~/components/ui/textarea";
 import { Label } from "~/components/ui/label";
 import { ColorPicker } from "~/components/ui/color-picker";
 import { cn } from "~/lib/utils";
+import { Switch } from "~/components/ui/switch";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -53,6 +54,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       accentColor: "#FF4FA3",
       greetingText: "Hi! How can we help you today?",
       companyName: "donkey support",
+      controlledByHost: false,
     },
     baseUrl,
   };
@@ -65,6 +67,9 @@ export default function WidgetSettings() {
   const [accentColor, setAccentColor] = useState(config.accentColor);
   const [greetingText, setGreetingText] = useState(config.greetingText);
   const [companyName, setCompanyName] = useState(config.companyName || "");
+  const [controlledByHost, setControlledByHost] = useState(
+    config.controlledByHost || false
+  );
   const [saved, setSaved] = useState(false);
   const [domains, setDomains] = useState(allowedDomains);
   const [newDomain, setNewDomain] = useState("");
@@ -86,14 +91,22 @@ export default function WidgetSettings() {
     }
   }, [configFetcher.state, configFetcher.data]);
 
+  const baseConfigLines = [
+    `accountId: ${JSON.stringify(accountId)}`,
+    controlledByHost ? "controlledByHost: true" : null,
+    controlledByHost ? "widgetIsOpen: false" : null,
+  ].filter(Boolean);
+
   const embedCode = `<script>
-  window.SupportWidget = { accountId: "${accountId}" };
+  window.SupportWidget = {
+    ${baseConfigLines.join(",\n    ")}
+  };
 </script>
 <script async src="${baseUrl}/widget/loader.js"></script>`;
 
   const embedCodeWithMetadata = `<script>
   window.SupportWidget = {
-    accountId: "${accountId}",
+    ${baseConfigLines.join(",\n    ")},
     // Optional: Identify the visitor
     email: "user@example.com",
     name: "John Doe",
@@ -113,6 +126,7 @@ export default function WidgetSettings() {
         accentColor,
         greetingText,
         companyName: companyName || null,
+        controlledByHost,
       },
       {
         method: "PUT",
@@ -283,6 +297,39 @@ export default function WidgetSettings() {
           <Card className="border-border/50 shadow-sm">
             <CardHeader>
               <div className="flex items-center gap-2 mb-1">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <MessageSquare className="w-5 h-5 text-amber-700" />
+                </div>
+                <CardTitle>Behavior</CardTitle>
+              </div>
+              <CardDescription>
+                Hide the bubble and let your site control open/close state.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <Label className="text-sm font-medium">
+                    Control widget from your site
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Toggle with{" "}
+                    <code className="font-mono">
+                      window.SupportWidget.widgetIsOpen
+                    </code>
+                  </p>
+                </div>
+                <Switch
+                  checked={controlledByHost}
+                  onChange={(e) => setControlledByHost(e.target.checked)}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader>
+              <div className="flex items-center gap-2 mb-1">
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <Globe className="w-5 h-5 text-blue-600" />
                 </div>
@@ -321,7 +368,7 @@ export default function WidgetSettings() {
                       >
                         <Badge
                           variant="secondary"
-                          className="gap-2 pl-3 pr-1 py-1.5 text-sm font-normal bg-muted hover:bg-muted/80"
+                          className="gap-2 pl-3 pr-1 py-1.5 text-sm font-normal text-black bg-muted hover:bg-muted/80"
                         >
                           {domain}
                           <button

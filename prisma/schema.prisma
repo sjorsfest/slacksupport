@@ -26,6 +26,7 @@ enum TicketPriority {
 enum MessageSource {
   visitor
   slack
+  discord
   agent_dashboard
   system
 }
@@ -55,14 +56,16 @@ model Account {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  users               User[]
-  slackInstallation   SlackInstallation?
-  slackChannelConfigs SlackChannelConfig[]
-  tickets             Ticket[]
-  visitors            Visitor[]
-  webhookEndpoints    WebhookEndpoint[]
-  widgetConfig        WidgetConfig?
-  subscription        Subscription?
+  users                 User[]
+  slackInstallation     SlackInstallation?
+  slackChannelConfigs   SlackChannelConfig[]
+  discordInstallation   DiscordInstallation?
+  discordChannelConfigs DiscordChannelConfig[]
+  tickets               Ticket[]
+  visitors              Visitor[]
+  webhookEndpoints      WebhookEndpoint[]
+  widgetConfig          WidgetConfig?
+  subscription          Subscription?
 
   @@map("accounts")
 }
@@ -176,6 +179,40 @@ model SlackChannelConfig {
   @@map("slack_channel_configs")
 }
 
+// DiscordInstallation - Stores Discord bot tokens for an Account
+model DiscordInstallation {
+  id               String   @id @default(cuid())
+  accountId        String   @unique
+  discordGuildId   String   // Discord server ID
+  discordGuildName String
+  botAccessToken   String   // Encrypted at rest
+  botUserId        String   // Bot's user ID in Discord
+  installedAt      DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([discordGuildId])
+  @@map("discord_installations")
+}
+
+// DiscordChannelConfig - Channels where tickets appear in Discord
+model DiscordChannelConfig {
+  id                 String   @id @default(cuid())
+  accountId          String
+  discordChannelId   String   // Channel ID
+  discordChannelName String
+  isDefault          Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, discordChannelId])
+  @@index([accountId])
+  @@map("discord_channel_configs")
+}
+
 // WidgetConfig - Theming and settings for the widget
 model WidgetConfig {
   id              String   @id @default(cuid())
@@ -184,6 +221,7 @@ model WidgetConfig {
   accentColor     String   @default("#1264A3")
   greetingText    String   @default("Hi! How can we help you today?")
   companyName     String?
+  controlledByHost Boolean @default(false)
   officeHoursStart String?  // e.g., "09:00"
   officeHoursEnd   String?  // e.g., "17:00"
   officeHoursTimezone String? @default("UTC")
@@ -214,7 +252,7 @@ model Visitor {
   @@map("visitors")
 }
 
-// Ticket - Support ticket with Slack thread mapping
+// Ticket - Support ticket with Slack/Discord thread mapping
 model Ticket {
   id                  String         @id @default(cuid())
   accountId           String
@@ -223,10 +261,16 @@ model Ticket {
   subject             String?
   visitorId           String
   assignedUserId      String?
+  // Slack thread mapping
   slackChannelId      String?
   slackThreadTs       String?        // Thread timestamp for matching replies
   slackRootMessageTs  String?
   slackPermalink      String?
+  // Discord thread mapping
+  discordChannelId    String?        // Channel where ticket lives
+  discordThreadId     String?        // Thread ID for matching replies
+  discordMessageId    String?        // Initial message ID in thread
+  discordPermalink    String?
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 
@@ -238,27 +282,36 @@ model Ticket {
   @@index([accountId, status])
   @@index([accountId, slackThreadTs])
   @@index([slackChannelId, slackThreadTs])
+  @@index([accountId, discordThreadId])
+  @@index([discordChannelId, discordThreadId])
   @@index([visitorId])
   @@map("tickets")
 }
 
 // Message - Individual messages in a ticket thread
 model Message {
-  id            String        @id @default(cuid())
-  ticketId      String
-  source        MessageSource
-  text          String
-  slackTs       String?       // Slack message timestamp
-  slackUserId   String?       // Slack user who sent the message
-  slackUserName String?       // Display name from Slack
-  rawSlackEvent Json?         // Raw Slack event for debugging
-  createdAt     DateTime      @default(now())
+  id              String        @id @default(cuid())
+  ticketId        String
+  source          MessageSource
+  text            String
+  // Slack message info
+  slackTs         String?       // Slack message timestamp
+  slackUserId     String?       // Slack user who sent the message
+  slackUserName   String?       // Display name from Slack
+  rawSlackEvent   Json?         // Raw Slack event for debugging
+  // Discord message info
+  discordMessageId String?      // Discord message ID
+  discordUserId    String?      // Discord user who sent the message
+  discordUserName  String?      // Display name from Discord
+  rawDiscordEvent  Json?        // Raw Discord event for debugging
+  createdAt       DateTime      @default(now())
 
   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   webhookDeliveries WebhookDelivery[]
 
   @@index([ticketId, createdAt])
   @@index([slackTs])
+  @@index([discordMessageId])
   @@map("messages")
 }
 
@@ -304,14 +357,19 @@ model WebhookDelivery {
   @@map("webhook_deliveries")
 }
 
-// EventDedup - Prevents duplicate Slack event processing
+// EventDedup - Prevents duplicate Slack/Discord event processing
 model EventDedup {
-  id           String   @id @default(cuid())
-  slackEventId String
-  slackTeamId  String
-  processedAt  DateTime @default(now())
+  id             String   @id @default(cuid())
+  // Slack event deduplication
+  slackEventId   String?
+  slackTeamId    String?
+  // Discord event deduplication
+  discordEventId String?
+  discordGuildId String?
+  processedAt    DateTime @default(now())
 
   @@unique([slackTeamId, slackEventId])
+  @@unique([discordGuildId, discordEventId])
   @@index([processedAt])
   @@map("event_dedups")
 }

@@ -13,6 +13,13 @@ export const settings = {
   SLACK_CLIENT_ID: process.env.SLACK_CLIENT_ID!,
   SLACK_CLIENT_SECRET: process.env.SLACK_CLIENT_SECRET!,
   SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET!,
+
+  // Discord
+  DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID || '',
+  DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET || '',
+  DISCORD_PUBLIC_KEY: process.env.DISCORD_PUBLIC_KEY || '',
+  DISCORD_BOT_TOKEN: process.env.DISCORD_BOT_TOKEN || '',
+
   BASE_URL: process.env.BASE_URL || 'http://localhost:5173',
   NODE_ENV: (process.env.NODE_ENV || 'development') as 'development' | 'production' | 'test',
   PORT: Number(process.env.PORT) || (process.env.NODE_ENV === 'production' ? 3000 : 5173),

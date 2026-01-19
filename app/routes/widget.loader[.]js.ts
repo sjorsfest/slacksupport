@@ -463,25 +463,55 @@ export async function loader({ request }: LoaderFunctionArgs) {
   shadow.appendChild(button);
   shadow.appendChild(tooltip);
   
+  var controlledByHost = !!config.controlledByHost;
+  if (typeof config.controlledByHost === 'undefined' && typeof config.widgetIsOpen === 'boolean') {
+    controlledByHost = true;
+  }
+  var desiredOpen = controlledByHost && typeof config.widgetIsOpen === 'boolean'
+    ? config.widgetIsOpen
+    : false;
+  var lastExternalOpen = desiredOpen;
+  
+  if (controlledByHost) {
+    button.style.display = 'none';
+    tooltip.style.display = 'none';
+  }
+  
   // Show tooltip after delay
-  setTimeout(() => {
-    if (!isOpen) {
-      tooltip.classList.add('visible');
-      setTimeout(() => {
-        tooltip.classList.remove('visible');
-      }, 5000);
-    }
-  }, 2000);
+  if (!controlledByHost) {
+    setTimeout(() => {
+      if (!isOpen) {
+        tooltip.classList.add('visible');
+        setTimeout(() => {
+          tooltip.classList.remove('visible');
+        }, 5000);
+      }
+    }, 2000);
+  }
   
   // Toggle widget
-  function toggle() {
-    isOpen = !isOpen;
+  function setOpen(nextOpen, animateClick) {
+    if (nextOpen === isOpen) return;
+    isOpen = nextOpen;
     
-    // Add celebration animation on click
-    button.classList.add('clicked');
-    setTimeout(function() {
-      button.classList.remove('clicked');
-    }, 600);
+    if (controlledByHost) {
+      lastExternalOpen = nextOpen;
+      try {
+        if (window.SupportWidget && typeof window.SupportWidget === 'object') {
+          window.SupportWidget.widgetIsOpen = nextOpen;
+        }
+      } catch (error) {
+        // Ignore assignment failures
+      }
+    }
+
+    if (animateClick) {
+      // Add celebration animation on click
+      button.classList.add('clicked');
+      setTimeout(function() {
+        button.classList.remove('clicked');
+      }, 600);
+    }
     
     button.classList.toggle('open', isOpen);
     frameContainer.classList.toggle('open', isOpen);
@@ -495,6 +525,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
       iframe.contentWindow.postMessage({ type: 'sw:opened' }, BASE_URL);
     }
   }
+
+  function toggle() {
+    setOpen(!isOpen, true);
+  }
   
   function updateBadge() {
     badge.textContent = unreadCount > 9 ? '9+' : unreadCount.toString();
@@ -502,7 +536,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
   
   // Event listeners
-  button.addEventListener('click', toggle);
+  if (!controlledByHost) {
+    button.addEventListener('click', toggle);
+  }
   
   // Handle messages from iframe
   window.addEventListener('message', function(event) {
@@ -513,16 +549,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
     
     switch (data.type) {
       case 'sw:close':
-        if (isOpen) toggle();
+        if (isOpen) setOpen(false, false);
         break;
       case 'sw:newMessage':
         if (!isOpen) {
           unreadCount++;
           updateBadge();
           // Show tooltip on new message
-          tooltip.textContent = 'New message! 💬';
-          tooltip.classList.add('visible');
-          setTimeout(() => tooltip.classList.remove('visible'), 5000);
+          if (!controlledByHost) {
+            tooltip.textContent = 'New message! 💬';
+            tooltip.classList.add('visible');
+            setTimeout(() => tooltip.classList.remove('visible'), 5000);
+          }
         }
         break;
       case 'sw:ready':
@@ -533,6 +571,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
   
   // Append to document
   document.body.appendChild(container);
+  
+  if (controlledByHost) {
+    setOpen(desiredOpen, false);
+    setInterval(function() {
+      var hostConfig = window.SupportWidget || {};
+      var nextOpen = typeof hostConfig.widgetIsOpen === 'boolean' ? hostConfig.widgetIsOpen : null;
+      if (typeof nextOpen !== 'boolean') return;
+      if (nextOpen !== lastExternalOpen) {
+        setOpen(nextOpen, false);
+      }
+    }, 300);
+  }
 })();
 `;
 

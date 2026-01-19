@@ -29,6 +29,7 @@ export const updateWidgetConfigSchema = z.object({
   accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid color format').optional(),
   greetingText: z.string().max(500).optional(),
   companyName: z.string().max(100).optional(),
+  controlledByHost: z.boolean().optional(),
   officeHoursStart: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
   officeHoursEnd: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
   officeHoursTimezone: z.string().optional().nullable(),
@@ -107,4 +108,3 @@ export type SelectChannelInput = z.infer<typeof selectChannelSchema>;
 export type VisitorIdentifyInput = z.infer<typeof visitorIdentifySchema>;
 export type PaginationInput = z.infer<typeof paginationSchema>;
 export type TicketFiltersInput = z.infer<typeof ticketFiltersSchema>;
-

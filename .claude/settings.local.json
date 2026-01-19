@@ -5,7 +5,8 @@
       "Bash(npm run typecheck:*)",
       "Bash(npx prisma generate:*)",
       "WebFetch(domain:better-auth.com)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm run db:generate:*)"
     ],
     "defaultMode": "plan"
   }
