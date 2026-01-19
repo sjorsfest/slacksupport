@@ -8,6 +8,8 @@ export default [
   layout("routes/_auth.tsx", [
     route("login", "routes/_auth.login.tsx"),
     route("signup", "routes/_auth.signup.tsx"),
+    route("verify-email/pending", "routes/_auth.verify-email.pending.tsx"),
+    route("verify-email/success", "routes/_auth.verify-email.success.tsx"),
   ]),
   
   // Dashboard routes (protected)
@@ -31,6 +33,7 @@ export default [
   route("api/slack/*", "routes/api.slack.$.ts"),
   route("api/stripe", "routes/api.stripe.$.ts", { id: "api-stripe-root" }),
   route("api/stripe/*", "routes/api.stripe.$.ts", { id: "api-stripe-subpath" }),
+  route("api/resend-verification", "routes/api.resend-verification.ts"),
   
   // Slack routes
   route("slack/install", "routes/slack.install.ts"),

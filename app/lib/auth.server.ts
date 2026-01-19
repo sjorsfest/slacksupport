@@ -3,6 +3,18 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { createAuthMiddleware } from "better-auth/api";
 import { redirect } from 'react-router';
 import { prisma } from "./db.server";
+import { sendVerificationEmail } from "./email.server";
+
+/**
+ * Normalize email by removing + subaddressing
+ * e.g., "foo+test@gmail.com" → "foo@gmail.com"
+ */
+function normalizeEmail(email: string): string {
+  const [localPart, domain] = email.toLowerCase().split("@");
+  // Remove everything after + in the local part
+  const normalizedLocal = localPart.split("+")[0];
+  return `${normalizedLocal}@${domain}`;
+}
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -18,6 +30,19 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
+    requireEmailVerification: false, // Allow login, show reminder banner
+  },
+  emailVerification: {
+    sendVerificationEmail: async ({ user, url }) => {
+      const res = await sendVerificationEmail({
+        email: user.email,
+        name: user.name,
+        url,
+      });
+      console.log("Verification email sent:", res);
+    },
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
   },
   socialProviders: {
     google: {
@@ -65,23 +90,37 @@ export const auth = betterAuth({
       if (!dbUser) return;
       if (dbUser.accountId) return; // already linked
 
-      // Try to find existing account by email domain
-      const domain = dbUser.email.split("@")[1]?.toLowerCase();
-      let account = domain
-        ? await prisma.account.findFirst({
-            where: { allowedDomains: { has: domain } },
-            select: { id: true },
-          })
-        : null;
+      // Find another user with same normalized email who has an account
+      const normalizedEmail = normalizeEmail(dbUser.email);
+      const [normalizedLocal, normalizedDomain] = normalizedEmail.split("@");
+
+      const existingUserWithAccount = await prisma.user.findFirst({
+        where: {
+          id: { not: dbUser.id }, // Exclude current user
+          accountId: { not: null },
+          // Match users whose normalized email matches
+          email: {
+            startsWith: normalizedLocal,
+            endsWith: `@${normalizedDomain}`,
+          },
+        },
+        select: { accountId: true, email: true },
+      });
+
+      // Filter to only users with actually matching normalized email
+      let account = existingUserWithAccount &&
+        normalizeEmail(existingUserWithAccount.email) === normalizedEmail
+          ? { id: existingUserWithAccount.accountId! }
+          : null;
 
       // If no matching tenant, create one
       if (!account) {
         const userName = dbUser.name || dbUser.email.split("@")[0] || "My Company";
-        
+
         account = await prisma.account.create({
           data: {
             name: `${userName}'s Workspace`,
-            allowedDomains: domain ? [domain] : [],
+            allowedDomains: [], // Empty, not domain-based
             widgetConfig: { create: { companyName: `${userName}'s Company` } },
           },
           select: { id: true },
@@ -130,9 +169,19 @@ export async function requireUser(request: Request): Promise<SessionUser> {
   if (!user) {
     throw redirect('/login');
   }
-  
+
   if (!user.accountId || !user.role) {
     throw redirect('/login');
+  }
+
+  // Check email verification status from database
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { emailVerified: true },
+  });
+
+  if (!dbUser?.emailVerified) {
+    throw redirect(`/verify-email/pending?email=${encodeURIComponent(user.email)}`);
   }
 
   return user as SessionUser;

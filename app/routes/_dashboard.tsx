@@ -4,6 +4,7 @@ import {
   useLocation,
   useLoaderData,
   useNavigate,
+  redirect,
 } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
 import { motion } from "framer-motion";
@@ -13,8 +14,7 @@ import {
   MessageSquare,
   Webhook,
   LogOut,
-  Settings,
-  Sparkles,
+
 } from "lucide-react";
 
 import { requireUser } from "~/lib/auth.server";
@@ -27,6 +27,22 @@ import { cn } from "~/lib/utils";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
+  const url = new URL(request.url);
+  const isOnboardingRoute = url.pathname.startsWith('/onboarding');
+
+
+  if (!isOnboardingRoute) {
+    const subscription = await prisma.subscription.findUnique({
+      where: { accountId: user.accountId },
+    });
+
+    console.log(subscription);
+
+    if (!subscription || !['active', 'trialing'].includes(subscription.status)) {
+      throw redirect('/onboarding/subscription');
+    }
+  }
+
 
   const account = await prisma.account.findUnique({
     where: { id: user.accountId },

@@ -93,8 +93,8 @@ export async function action({ request }: ActionFunctionArgs) {
       return { error: "Failed to create user" };
     }
 
-    // Return the redirect (contains session headers with correct user data)
-    return redirect("/tickets", {
+    // Redirect to verification pending page with email
+    return redirect(`/verify-email/pending?email=${encodeURIComponent(email)}`, {
       headers: response.headers,
     });
   } catch (e) {
