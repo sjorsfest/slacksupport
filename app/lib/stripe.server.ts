@@ -40,6 +40,21 @@ export async function listPricesForProduct(productId: string) {
 }
 
 /**
+ * Get a product with all its active prices.
+ */
+export async function getProductWithPrices(productId: string) {
+  const [product, prices] = await Promise.all([
+    stripe.products.retrieve(productId),
+    stripe.prices.list({ product: productId, active: true }),
+  ]);
+
+  return {
+    product,
+    prices: prices.data,
+  };
+}
+
+/**
  * Create a checkout session to start a subscription or one-time payment.
  */
 export async function createCheckoutSession({
@@ -51,6 +66,7 @@ export async function createCheckoutSession({
   accountId,
   userId,
   metadata,
+  couponId,
 }: {
   priceId: string;
   customerId?: string;
@@ -60,6 +76,7 @@ export async function createCheckoutSession({
   accountId?: string;
   userId?: string;
   metadata?: Record<string, string>;
+  couponId?: string;
 }) {
   const sessionMetadata = {
     ...metadata,
@@ -84,6 +101,9 @@ export async function createCheckoutSession({
     subscription_data: {
       metadata: sessionMetadata,
     },
+    ...(couponId && {
+      discounts: [{ coupon: couponId }],
+    }),
   });
 
   return session;

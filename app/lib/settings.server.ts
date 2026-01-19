@@ -20,6 +20,8 @@ export const settings = {
   // Stripe
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY!,
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+  STRIPE_PRODUCT_ID: process.env.STRIPE_PRODUCT_ID!,
+  STRIPE_MONTHLY_COUPON_ID: process.env.STRIPE_MONTHLY_COUPON_ID,
 
   // Serverless detection
   VERCEL: process.env.VERCEL,
@@ -39,6 +41,7 @@ const requiredVars: (keyof typeof settings)[] = [
   'SLACK_SIGNING_SECRET',
   'STRIPE_SECRET_KEY',
   'STRIPE_WEBHOOK_SECRET',
+  'STRIPE_PRODUCT_ID',
 ];
 
 if (settings.NODE_ENV !== 'test') {

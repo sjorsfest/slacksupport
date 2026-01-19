@@ -78,16 +78,14 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto py-12 px-6">
+    <div className="max-w-3xl mx-auto py-7 px-6">
       <div className="text-center mb-10">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/10 rounded-2xl mb-4">
-          <svg className="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-secondary-500/10 rounded-full mb-4">
+          <img src="/static/donkey.png" alt="Logo" className="w-12 h-12" />
         </div>
-        <h1 className="font-display text-3xl fun-gradient-text">Welcome aboard</h1>
+        <h1 className="font-display text-3xl text-secondary-400">Welcome aboard</h1>
         <p className="text-slate-600 mt-2">
-          Set the guardrails that keep your widget secure and on-brand.
+          Set the guardrails that keep your widget secure.
         </p>
       </div>
 
