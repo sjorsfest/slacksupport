@@ -1,9 +1,7 @@
 import { settings } from './app/lib/settings.server';
 import type { ServerBuild } from 'react-router';
-import { createServer } from 'http';
 import { createRequestHandler } from '@react-router/express';
 import express from 'express';
-import { initializeWebSocketServer } from './app/lib/ws.server';
 import { startAllWorkers } from './app/jobs';
 
 const isProduction = settings.NODE_ENV === 'production';
@@ -14,7 +12,7 @@ async function start() {
 
   // Initialize workers - needed for both dev and production
   console.log('ℹ️ Running in PERSISTENT SERVER mode (VPC)');
-  startAllWorkers();
+  await startAllWorkers();
   console.log('✅ BullMQ workers started');
 
   if (isProduction) {
@@ -46,16 +44,9 @@ async function start() {
     });
   }
 
-  // Create HTTP server
-  const server = createServer(app);
-
-  // Initialize WebSocket server
-  initializeWebSocketServer(server);
-  console.log('✅ WebSocket server initialized');
-
   // Start listening
   const port = settings.PORT;
-  server.listen(port, () => {
+  app.listen(port, () => {
     console.log(`🚀 Server running on http://localhost:${port}`);
   });
 }

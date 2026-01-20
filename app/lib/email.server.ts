@@ -100,8 +100,7 @@ export async function sendVerificationEmail({
       </html>
     `,
   });
-  const { error, data } = res;
-  console.log(data)
+  const { error } = res;
   if (error) {
     console.error("Failed to send verification email:", error);
     throw new Error("Failed to send verification email");

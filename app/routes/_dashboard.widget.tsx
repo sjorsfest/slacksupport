@@ -221,6 +221,39 @@ export default function WidgetSettings() {
             activeTab === "settings" ? "block" : "hidden xl:block"
           )}
         >
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <MessageSquare className="w-5 h-5 text-amber-700" />
+                </div>
+                <CardTitle>Behavior</CardTitle>
+              </div>
+              <CardDescription>
+                Hide the bubble and let your site control open/close state.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <Label className="text-sm font-medium">
+                    Control widget from your site
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Toggle with{" "}
+                    <code className="font-mono">
+                      window.SupportWidget.widgetIsOpen
+                    </code>
+                  </p>
+                </div>
+                <Switch
+                  checked={controlledByHost}
+                  onChange={(e) => setControlledByHost(e.target.checked)}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300">
             <CardHeader>
               <div className="flex items-center gap-2 mb-1">
@@ -291,39 +324,6 @@ export default function WidgetSettings() {
                   "Save Changes"
                 )}
               </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50 shadow-sm">
-            <CardHeader>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="p-2 bg-amber-100 rounded-lg">
-                  <MessageSquare className="w-5 h-5 text-amber-700" />
-                </div>
-                <CardTitle>Behavior</CardTitle>
-              </div>
-              <CardDescription>
-                Hide the bubble and let your site control open/close state.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <Label className="text-sm font-medium">
-                    Control widget from your site
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Toggle with{" "}
-                    <code className="font-mono">
-                      window.SupportWidget.widgetIsOpen
-                    </code>
-                  </p>
-                </div>
-                <Switch
-                  checked={controlledByHost}
-                  onChange={(e) => setControlledByHost(e.target.checked)}
-                />
-              </div>
             </CardContent>
           </Card>
 
@@ -569,31 +569,41 @@ export default function WidgetSettings() {
                   </motion.div>
 
                   {/* Widget Toggle Button */}
-                  <div className="flex justify-end">
-                    <motion.div
-                      className="w-14 h-14 rounded-full flex items-center justify-center text-white cursor-pointer border-2 border-black"
-                      style={{
-                        backgroundColor: primaryColor,
-                        boxShadow: "3px 3px 0px 0px #1a1a1a",
-                      }}
-                      whileHover={{
-                        scale: 1.08,
-                        rotate: -8,
-                        boxShadow: "4px 4px 0px 0px #1a1a1a",
-                      }}
-                      whileTap={{
-                        scale: 0.92,
-                        boxShadow: "1px 1px 0px 0px #1a1a1a",
-                      }}
-                      animate={{ y: [0, -4, 0] }}
-                      transition={{
-                        y: { duration: 2, repeat: Infinity, ease: "easeInOut" },
-                        scale: { type: "spring", stiffness: 400, damping: 17 },
-                      }}
-                    >
-                      <MessageSquare className="w-7 h-7 drop-shadow-[1px_1px_0px_rgba(0,0,0,0.2)]" />
-                    </motion.div>
-                  </div>
+                  {!controlledByHost && (
+                    <div className="flex justify-end">
+                      <motion.div
+                        className="w-14 h-14 rounded-full flex items-center justify-center text-white cursor-pointer border-2 border-black"
+                        style={{
+                          backgroundColor: primaryColor,
+                          boxShadow: "3px 3px 0px 0px #1a1a1a",
+                        }}
+                        whileHover={{
+                          scale: 1.08,
+                          rotate: -8,
+                          boxShadow: "4px 4px 0px 0px #1a1a1a",
+                        }}
+                        whileTap={{
+                          scale: 0.92,
+                          boxShadow: "1px 1px 0px 0px #1a1a1a",
+                        }}
+                        animate={{ y: [0, -4, 0] }}
+                        transition={{
+                          y: {
+                            duration: 2,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                          },
+                          scale: {
+                            type: "spring",
+                            stiffness: 400,
+                            damping: 17,
+                          },
+                        }}
+                      >
+                        <MessageSquare className="w-7 h-7 drop-shadow-[1px_1px_0px_rgba(0,0,0,0.2)]" />
+                      </motion.div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

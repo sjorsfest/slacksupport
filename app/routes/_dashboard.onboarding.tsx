@@ -50,7 +50,7 @@ export default function Onboarding() {
 
   useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data) {
-      navigate('/integrations/slack');
+      navigate('/connect');
     }
   }, [fetcher.state, fetcher.data, navigate]);
 
@@ -92,7 +92,7 @@ export default function Onboarding() {
       <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
         <Badge variant="muted" className="rounded-full px-4 py-1">0 · Plan</Badge>
         <Badge className="bg-primary text-primary-foreground">1 · Domains</Badge>
-        <Badge variant="muted" className="rounded-full px-4 py-1">2 · Slack</Badge>
+        <Badge variant="muted" className="rounded-full px-4 py-1">2 · Connect</Badge>
         <Badge variant="muted" className="rounded-full px-4 py-1">3 · Embed</Badge>
       </div>
 
@@ -145,7 +145,7 @@ export default function Onboarding() {
           <div className="flex justify-end gap-3">
             <Button
               variant="ghost"
-              onClick={() => navigate('/integrations/slack')}
+              onClick={() => navigate('/connect')}
             >
               Skip for now
             </Button>

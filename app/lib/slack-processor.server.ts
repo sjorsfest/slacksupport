@@ -4,7 +4,6 @@
  */
 import { prisma } from '~/lib/db.server';
 import { getSlackUserInfo, type SlackEventPayload } from '~/lib/slack.server';
-import { publishTicketMessage } from '~/lib/redis.server';
 import { triggerWebhooks } from '~/lib/webhook.server';
 
 export type ProcessResult = {
@@ -116,16 +115,6 @@ export async function processSlackEvent(
       slackEventId: eventId,
       slackTeamId: teamId!,
     },
-  });
-
-  // Publish to SSE/WebSocket for real-time updates
-  await publishTicketMessage(ticket.id, {
-    ticketId: ticket.id,
-    messageId: message.id,
-    source: 'slack',
-    text: message.text,
-    createdAt: message.createdAt.toISOString(),
-    slackUserName,
   });
 
   // Trigger webhook delivery

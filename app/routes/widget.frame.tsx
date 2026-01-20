@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { LoaderFunctionArgs, LinksFunction } from "react-router";
 import { useLoaderData, useFetcher, Links, Meta } from "react-router";
-import { motion, AnimatePresence } from "framer-motion";
-import { Send, X, MessageSquare, Sparkles, PartyPopper } from "lucide-react";
+import { motion } from "framer-motion";
+import { Send, X, Sparkles, PartyPopper } from "lucide-react";
 
 import { prisma } from "~/lib/db.server";
-import { isServerless } from "~/lib/env.server";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { Avatar, AvatarFallback } from "~/components/ui/avatar";
 import { cn } from "~/lib/utils";
 import appStyles from "~/app.css?url";
 
@@ -80,8 +79,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     existingTicket = visitor?.tickets[0] || null;
   }
 
-  const usePolling = isServerless();
-
   return {
     accountId,
     visitorId: visitorId || "",
@@ -103,19 +100,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
             text: m.text,
             createdAt: m.createdAt.toISOString(),
             slackUserName: m.slackUserName,
+            discordUserName: m.discordUserName,
           })),
         }
       : null,
-    usePolling,
   };
 }
 
 type Message = {
   id: string;
-  source: "visitor" | "slack" | "agent_dashboard" | "system";
+  source: "visitor" | "slack" | "discord" | "agent_dashboard" | "system";
   text: string;
   createdAt: string;
   slackUserName?: string | null;
+  discordUserName?: string | null;
   pending?: boolean;
 };
 
@@ -128,11 +126,8 @@ export default function WidgetFrame() {
     data.existingTicket?.id || null
   );
   const [inputValue, setInputValue] = useState("");
-  const [isConnected, setIsConnected] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
   const [isIdle, setIsIdle] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const idleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivityRef = useRef<Date>(new Date());
@@ -149,8 +144,8 @@ export default function WidgetFrame() {
   const showMissingInfoForm =
     (!visitorInfo.name || !visitorInfo.email) && !ticketId;
 
-  const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
-  const POLLING_INTERVAL_MS = 2000;
+  const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+  const POLLING_INTERVAL_MS = 2500; // 2.5 seconds
 
   const resetIdleTimeout = useCallback(() => {
     lastActivityRef.current = new Date();
@@ -162,26 +157,30 @@ export default function WidgetFrame() {
       clearTimeout(idleTimeoutRef.current);
     }
 
-    if (data.usePolling && ticketId) {
+    if (ticketId) {
       idleTimeoutRef.current = setTimeout(() => {
         console.log("Chat idle, stopping polling");
         setIsIdle(true);
-        setIsConnected(false);
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
           pollingIntervalRef.current = null;
         }
       }, IDLE_TIMEOUT_MS);
     }
-  }, [isIdle, data.usePolling, ticketId]);
+  }, [isIdle, ticketId]);
 
+  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Handle message fetcher response (for sending messages)
   useEffect(() => {
     if (messageFetcher.data) {
-      const result = messageFetcher.data as any;
+      const result = messageFetcher.data as {
+        ticketId?: string;
+        messageId?: string;
+      };
 
       if (result.ticketId && !ticketId) {
         setTicketId(result.ticketId);
@@ -197,7 +196,7 @@ export default function WidgetFrame() {
             const newMsgs = [...prev];
             newMsgs[realIndex] = {
               ...newMsgs[realIndex],
-              id: result.messageId,
+              id: result.messageId!,
               pending: false,
             };
             return newMsgs;
@@ -208,6 +207,7 @@ export default function WidgetFrame() {
     }
   }, [messageFetcher.data, ticketId]);
 
+  // Handle polling fetcher response
   useEffect(() => {
     if (pollingFetcher.data && pollingFetcher.data.messages) {
       const newMessages = pollingFetcher.data.messages;
@@ -229,13 +229,14 @@ export default function WidgetFrame() {
     }
   }, [pollingFetcher.data]);
 
+  // Start polling for new messages
   const startPolling = useCallback(() => {
-    if (!ticketId || !data.usePolling) return;
+    if (!ticketId) return;
 
-    setIsConnected(true);
     setIsIdle(false);
     resetIdleTimeout();
 
+    // Initialize last message time if we have existing messages
     if (!lastMessageTimeRef.current && messages.length > 0) {
       lastMessageTimeRef.current = messages[messages.length - 1].createdAt;
     }
@@ -252,69 +253,20 @@ export default function WidgetFrame() {
       }
     };
 
+    // Initial poll
     poll();
+
+    // Set up interval
     pollingIntervalRef.current = setInterval(poll, POLLING_INTERVAL_MS);
-  }, [ticketId, data.usePolling, messages, resetIdleTimeout, pollingFetcher]);
+  }, [ticketId, messages, resetIdleTimeout, pollingFetcher]);
 
-  const connectSSE = useCallback(() => {
-    if (!ticketId || data.usePolling) return;
-
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
-
-    const sseUrl = `/api/tickets/${ticketId}/stream`;
-    const eventSource = new EventSource(sseUrl);
-
-    eventSource.addEventListener("connected", () => {
-      setIsConnected(true);
-    });
-
-    eventSource.addEventListener("message", (event) => {
-      try {
-        const messageData = JSON.parse(event.data);
-        const newMessage: Message = {
-          id: messageData.messageId,
-          source: messageData.source,
-          text: messageData.text,
-          createdAt: messageData.createdAt,
-          slackUserName: messageData.slackUserName,
-        };
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === newMessage.id)) return prev;
-          return [...prev, newMessage];
-        });
-        window.parent.postMessage({ type: "sw:newMessage" }, "*");
-      } catch (e) {
-        console.error("Failed to parse SSE message:", e);
-      }
-    });
-
-    eventSource.onerror = (error) => {
-      setIsConnected(false);
-      eventSource.close();
-
-      setTimeout(() => {
-        connectSSE();
-      }, 3000);
-    };
-
-    eventSourceRef.current = eventSource;
-  }, [ticketId, data.usePolling]);
-
+  // Start/stop polling when ticketId changes
   useEffect(() => {
     if (ticketId) {
-      if (data.usePolling) {
-        startPolling();
-      } else {
-        connectSSE();
-      }
+      startPolling();
     }
 
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
       }
@@ -322,17 +274,18 @@ export default function WidgetFrame() {
         clearTimeout(idleTimeoutRef.current);
       }
     };
-  }, [ticketId, data.usePolling, connectSSE, startPolling]);
+  }, [ticketId, startPolling]);
 
-  const handleContinueChat = () => {
-    if (data.usePolling && ticketId) {
-      startPolling();
-    }
-  };
-
+  // Notify parent frame that widget is ready
   useEffect(() => {
     window.parent.postMessage({ type: "sw:ready" }, "*");
   }, []);
+
+  const handleContinueChat = () => {
+    if (ticketId) {
+      startPolling();
+    }
+  };
 
   const handleClose = () => {
     window.parent.postMessage({ type: "sw:close" }, "*");
@@ -360,9 +313,7 @@ export default function WidgetFrame() {
     setMessages((prev) => [...prev, pendingMessage]);
 
     try {
-      let currentTicketId = ticketId;
-
-      if (!currentTicketId) {
+      if (!ticketId) {
         messageFetcher.submit(
           {
             accountId: data.accountId!,
@@ -370,7 +321,7 @@ export default function WidgetFrame() {
             message: text,
             email: visitorInfo.email,
             name: visitorInfo.name,
-            metadata: data.metadata ? JSON.stringify(data.metadata) : "{}",
+            metadata: data.metadata || undefined,
           },
           {
             method: "POST",
@@ -383,7 +334,7 @@ export default function WidgetFrame() {
           { text, source: "visitor" },
           {
             method: "POST",
-            action: `/api/tickets/${currentTicketId}/messages`,
+            action: `/api/tickets/${ticketId}/messages`,
             encType: "application/json",
           }
         );
@@ -601,7 +552,8 @@ export default function WidgetFrame() {
                               >
                                 {isVisitor
                                   ? "Y"
-                                  : msg.slackUserName?.[0]?.toUpperCase() ||
+                                  : (msg.slackUserName ||
+                                      msg.discordUserName)?.[0]?.toUpperCase() ||
                                     "A"}
                               </AvatarFallback>
                             </Avatar>
@@ -625,9 +577,11 @@ export default function WidgetFrame() {
                               </div>
                               <span className="text-[10px] text-slate-400 px-1 font-medium">
                                 {msg.source !== "visitor" &&
-                                  msg.slackUserName && (
+                                  (msg.slackUserName ||
+                                    msg.discordUserName) && (
                                     <span className="mr-1">
-                                      {msg.slackUserName} •
+                                      {msg.slackUserName || msg.discordUserName}{" "}
+                                      •
                                     </span>
                                   )}
                                 {formatTime(msg.createdAt)}
@@ -638,28 +592,6 @@ export default function WidgetFrame() {
                       })}
                     </div>
                   ))}
-
-                  {isTyping && (
-                    <div className="flex gap-3">
-                      <Avatar className="w-8 h-8">
-                        <AvatarFallback>...</AvatarFallback>
-                      </Avatar>
-                      <div className="bg-white p-3 rounded-2xl rounded-tl-none border border-slate-100 shadow-sm flex gap-1 items-center">
-                        <span
-                          className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "0ms" }}
-                        />
-                        <span
-                          className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "150ms" }}
-                        />
-                        <span
-                          className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "300ms" }}
-                        />
-                      </div>
-                    </div>
-                  )}
 
                   <div ref={messagesEndRef} />
                 </div>

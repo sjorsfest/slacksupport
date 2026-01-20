@@ -17,11 +17,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // Handle Slack errors (e.g., user cancelled)
   if (error) {
     console.error('Slack OAuth error:', error);
-    return redirect('/integrations/slack?error=oauth_cancelled');
+    return redirect('/connect/slack?error=oauth_cancelled');
   }
 
   if (!code || !state) {
-    return redirect('/integrations/slack?error=missing_params');
+    return redirect('/connect/slack?error=missing_params');
   }
 
   // Verify state token
@@ -34,7 +34,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     if (oauthState) {
       await prisma.oAuthState.delete({ where: { id: oauthState.id } });
     }
-    return redirect('/integrations/slack?error=invalid_state');
+    return redirect('/connect/slack?error=invalid_state');
   }
 
   const accountId = oauthState.accountId;
@@ -48,7 +48,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     if (!response.ok || !response.access_token || !response.team || !response.bot_user_id) {
       console.error('Slack token exchange failed:', response.error);
-      return redirect('/integrations/slack?error=token_exchange_failed');
+      return redirect('/connect/slack?error=token_exchange_failed');
     }
 
     // Store installation
@@ -61,10 +61,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
     });
 
     console.log('Slack installation successful for account:', accountId);
-    return redirect('/integrations/slack?success=true');
+    return redirect('/connect/slack?success=true');
   } catch (err) {
     console.error('Slack OAuth callback error:', err);
-    return redirect('/integrations/slack?error=internal_error');
+    return redirect('/connect/slack?error=internal_error');
   }
 }
 

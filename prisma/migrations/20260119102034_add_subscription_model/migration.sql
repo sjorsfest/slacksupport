@@ -37,3 +37,6 @@ CREATE INDEX "subscriptions_stripeSubscriptionId_idx" ON "subscriptions"("stripe
 
 -- AddForeignKey
 ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddColumn
+ALTER TABLE "widget_configs" ADD COLUMN "controlledByHost" BOOLEAN NOT NULL DEFAULT false;

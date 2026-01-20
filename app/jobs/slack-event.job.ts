@@ -1,7 +1,7 @@
 import { Worker, type Job } from 'bullmq';
 import { prisma } from '~/lib/db.server';
-import { getBotUserId, getSlackUserInfo, type SlackEventPayload } from '~/lib/slack.server';
-import { publishTicketMessage, bullMQConnection, QUEUE_NAMES, type SlackEventJobData } from '~/lib/redis.server';
+import { getSlackUserInfo, type SlackEventPayload } from '~/lib/slack.server';
+import { bullMQConnection, QUEUE_NAMES, type SlackEventJobData } from '~/lib/redis.server';
 import { triggerWebhooks } from '~/lib/webhook.server';
 
 /**
@@ -113,16 +113,6 @@ export function createSlackEventWorker(): Worker<SlackEventJobData> {
           slackEventId: eventId,
           slackTeamId: teamId!,
         },
-      });
-
-      // Publish to WebSocket for real-time updates
-      await publishTicketMessage(ticket.id, {
-        ticketId: ticket.id,
-        messageId: message.id,
-        source: 'slack',
-        text: message.text,
-        createdAt: message.createdAt.toISOString(),
-        slackUserName,
       });
 
       // Trigger webhook delivery

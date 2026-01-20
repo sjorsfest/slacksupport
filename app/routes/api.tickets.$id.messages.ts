@@ -50,6 +50,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       text: true,
       createdAt: true,
       slackUserName: true,
+      discordUserName: true,
     },
   });
 
@@ -60,6 +61,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       text: m.text,
       createdAt: m.createdAt.toISOString(),
       slackUserName: m.slackUserName,
+      discordUserName: m.discordUserName,
     })),
     ticketStatus: ticket.status,
     serverTime: new Date().toISOString(),

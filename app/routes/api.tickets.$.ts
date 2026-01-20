@@ -4,7 +4,7 @@ import { requireUser, getCurrentUser } from '~/lib/auth.server';
 import { createTicketSchema, createMessageSchema, updateTicketSchema, ticketFiltersSchema } from '~/types/schemas';
 import { parseRequest } from '~/lib/request.server';
 import { createTicketInSlack, postToSlack } from '~/lib/slack.server';
-import { publishTicketMessage } from '~/lib/redis.server';
+import { createTicketInDiscord, postToDiscord } from '~/lib/discord.server';
 import { triggerWebhooks } from '~/lib/webhook.server';
 
 /**
@@ -65,6 +65,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         lastMessage: t.messages[0] || null,
         createdAt: t.createdAt,
         slackPermalink: t.slackPermalink,
+        discordPermalink: t.discordPermalink,
       })),
       pagination: {
         page: filters.page,
@@ -157,17 +158,23 @@ export async function action({ request, params }: ActionFunctionArgs) {
         });
       }
 
-      // Get default channel
-      const channelConfig = await prisma.slackChannelConfig.findFirst({
-        where: { accountId: data.accountId, isDefault: true },
-      });
+      // Get default channel configs (Slack or Discord)
+      const [slackChannelConfig, discordChannelConfig] = await Promise.all([
+        prisma.slackChannelConfig.findFirst({
+          where: { accountId: data.accountId, isDefault: true },
+        }),
+        prisma.discordChannelConfig.findFirst({
+          where: { accountId: data.accountId, isDefault: true },
+        }),
+      ]);
 
       // Create ticket
       const ticket = await prisma.ticket.create({
         data: {
           accountId: data.accountId,
           visitorId: visitor.id,
-          slackChannelId: channelConfig?.slackChannelId,
+          slackChannelId: slackChannelConfig?.slackChannelId,
+          discordChannelId: discordChannelConfig?.discordChannelId,
         },
       });
 
@@ -181,11 +188,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
       });
 
       // Post to Slack if configured
-      if (channelConfig) {
+      if (slackChannelConfig) {
         try {
           const slackResult = await createTicketInSlack(
             data.accountId,
-            channelConfig.slackChannelId,
+            slackChannelConfig.slackChannelId,
             {
               id: ticket.id,
               visitorEmail: visitor.email ?? undefined,
@@ -208,6 +215,37 @@ export async function action({ request, params }: ActionFunctionArgs) {
         } catch (slackError) {
           console.error('Failed to post to Slack:', slackError);
           // Don't fail the ticket creation if Slack fails
+        }
+      }
+
+      // Post to Discord if configured (and Slack not configured - only one integration allowed)
+      if (discordChannelConfig && !slackChannelConfig) {
+        try {
+          const discordResult = await createTicketInDiscord(
+            data.accountId,
+            discordChannelConfig.discordChannelId,
+            {
+              id: ticket.id,
+              visitorEmail: visitor.email ?? undefined,
+              visitorName: visitor.name ?? undefined,
+              firstMessage: data.message,
+              metadata: data.metadata,
+            }
+          );
+
+          if (discordResult) {
+            await prisma.ticket.update({
+              where: { id: ticket.id },
+              data: {
+                discordThreadId: discordResult.threadId,
+                discordMessageId: discordResult.messageId,
+                discordPermalink: discordResult.permalink,
+              },
+            });
+          }
+        } catch (discordError) {
+          console.error('Failed to post to Discord:', discordError);
+          // Don't fail the ticket creation if Discord fails
         }
       }
 
@@ -279,10 +317,10 @@ export async function action({ request, params }: ActionFunctionArgs) {
       // Post to Slack thread if exists
       if (ticket.slackChannelId && ticket.slackThreadTs) {
         try {
-          const prefix = source === 'agent_dashboard' 
-            ? `💬 *${user?.name || 'Agent'}:*\n` 
+          const prefix = source === 'agent_dashboard'
+            ? `💬 *${user?.name || 'Agent'}:*\n`
             : '👤 *Visitor:*\n';
-          
+
           const slackResult = await postToSlack(
             ticket.accountId,
             ticket.slackChannelId,
@@ -301,15 +339,30 @@ export async function action({ request, params }: ActionFunctionArgs) {
         }
       }
 
-      // Publish to WebSocket
-      await publishTicketMessage(ticketId, {
-        ticketId,
-        messageId: message.id,
-        source,
-        text: data.text,
-        createdAt: message.createdAt.toISOString(),
-        slackUserName: user?.name ?? undefined,
-      });
+      // Post to Discord thread if exists
+      if (ticket.discordChannelId && ticket.discordThreadId) {
+        try {
+          const prefix = source === 'agent_dashboard'
+            ? `**${user?.name || 'Agent'}:**\n`
+            : '**Visitor:**\n';
+
+          const discordResult = await postToDiscord(
+            ticket.accountId,
+            ticket.discordChannelId,
+            prefix + data.text,
+            { threadId: ticket.discordThreadId }
+          );
+
+          if (discordResult?.id) {
+            await prisma.message.update({
+              where: { id: message.id },
+              data: { discordMessageId: discordResult.id },
+            });
+          }
+        } catch (discordError) {
+          console.error('Failed to post message to Discord:', discordError);
+        }
+      }
 
       // Trigger webhooks
       await triggerWebhooks(

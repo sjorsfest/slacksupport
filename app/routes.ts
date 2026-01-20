@@ -18,7 +18,9 @@ export default [
     route("onboarding/subscription", "routes/_dashboard.onboarding.subscription.tsx"),
     route("tickets", "routes/_dashboard.tickets._index.tsx"),
     route("tickets/:id", "routes/_dashboard.tickets.$id.tsx"),
-    route("integrations/slack", "routes/_dashboard.integrations.slack.tsx"),
+    route("connect", "routes/_dashboard.connect._index.tsx"),
+    route("connect/slack", "routes/_dashboard.connect.slack.tsx"),
+    route("connect/discord", "routes/_dashboard.connect.discord.tsx"),
     route("widget", "routes/_dashboard.widget.tsx"),
     route("settings/webhooks", "routes/_dashboard.settings.webhooks.tsx"),
   ]),
@@ -31,6 +33,8 @@ export default [
   route("api/webhooks", "routes/api.webhooks.$.ts", { id: "api-webhooks-root" }),
   route("api/webhooks/*", "routes/api.webhooks.$.ts", { id: "api-webhooks-subpath" }),
   route("api/slack/*", "routes/api.slack.$.ts"),
+  route("api/discord", "routes/api.discord.$.ts", { id: "api-discord-root" }),
+  route("api/discord/*", "routes/api.discord.$.ts", { id: "api-discord-subpath" }),
   route("api/stripe", "routes/api.stripe.$.ts", { id: "api-stripe-root" }),
   route("api/stripe/*", "routes/api.stripe.$.ts", { id: "api-stripe-subpath" }),
   route("api/resend-verification", "routes/api.resend-verification.ts"),
@@ -39,6 +43,11 @@ export default [
   route("slack/install", "routes/slack.install.ts"),
   route("slack/oauth/callback", "routes/slack.oauth.callback.ts"),
   route("slack/events", "routes/slack.events.ts"),
+
+  // Discord routes
+  route("discord/install", "routes/discord.install.ts"),
+  route("discord/oauth/callback", "routes/discord.oauth.callback.ts"),
+  route("discord/events", "routes/discord.events.ts"),
 
   // Stripe routes
   route("stripe/checkout/success", "routes/stripe.checkout.success.tsx"),

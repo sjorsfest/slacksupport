@@ -31,7 +31,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Toaster />
         <ScrollRestoration />
         <Scripts />
-        <SupportWidget accountId="cmjjtjd6e000004l7av2fv15r" />
+        <SupportWidget accountId="cmkmgkyhy00008ylwkt95cmba" baseUrl="http://localhost:5173" />
       </body>
     </html>
   );

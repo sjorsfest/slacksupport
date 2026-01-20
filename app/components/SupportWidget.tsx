@@ -23,7 +23,7 @@ declare global {
 
 export function SupportWidget({
   accountId,
-  baseUrl = "https://slacksupport.vercel.app",
+  baseUrl,
   email,
   name,
   metadata,

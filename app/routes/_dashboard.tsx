@@ -10,11 +10,13 @@ import type { LoaderFunctionArgs } from "react-router";
 import { motion } from "framer-motion";
 import {
   Ticket,
-  Slack,
+  Plug,
   MessageSquare,
   Webhook,
   LogOut,
+  Slack,
 } from "lucide-react";
+import { FaDiscord } from "react-icons/fa";
 
 import { requireUser } from "~/lib/auth.server";
 import { authClient } from "~/lib/auth-client";
@@ -35,8 +37,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
       where: { accountId: user.accountId },
     });
 
-    console.log(subscription);
-
     if (!subscription || !['active', 'trialing'].includes(subscription.status)) {
       throw redirect('/onboarding/subscription');
     }
@@ -48,6 +48,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
     include: {
       slackInstallation: {
         select: { slackTeamName: true },
+      },
+      discordInstallation: {
+        select: { discordGuildName: true },
       },
       _count: {
         select: {
@@ -65,9 +68,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
 const navItems = [
   { path: "/tickets", label: "Tickets", icon: Ticket, color: "text-blue-500" },
   {
-    path: "/integrations/slack",
-    label: "Slack",
-    icon: Slack,
+    path: "/connect",
+    label: "Connect",
+    icon: Plug,
     color: "text-purple-500",
   },
   {
@@ -114,16 +117,10 @@ export default function DashboardLayout() {
               />
               <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white animate-bounce-subtle" />
             </div>
-            <div>
+            <div className="flex flex-col items-center justify-center">
               <h1 className="font-display text-4xl font-bold text-primary-500 text-center leading-[0.8] w-fit mx-auto tracking-tighter">
                 Donkey Support
               </h1>
-              {account?.slackInstallation && (
-                <div className="text-xs text-muted-foreground flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                  {account.slackInstallation.slackTeamName}
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -171,6 +168,26 @@ export default function DashboardLayout() {
                       {account._count.tickets}
                     </Badge>
                   ) : null}
+
+                  {item.path === "/connect" && (account?.slackInstallation || account?.discordInstallation) && (
+                    <span className={cn(
+                      "absolute bottom-0.5 left-12 flex items-center gap-1 text-[10px] z-10",
+                      isActive ? "text-primary-700" : "text-muted-foreground"
+                    )}>
+                      {account.slackInstallation && (
+                        <>
+                          <Slack className="w-2.5 h-2.5" />
+                          {account.slackInstallation.slackTeamName}
+                        </>
+                      )}
+                      {account.discordInstallation && !account.slackInstallation && (
+                        <>
+                          <FaDiscord className="w-2.5 h-2.5" />
+                          {account.discordInstallation.discordGuildName}
+                        </>
+                      )}
+                    </span>
+                  )}
                 </div>
               </Link>
             );

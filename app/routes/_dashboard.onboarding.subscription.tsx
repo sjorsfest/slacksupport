@@ -161,7 +161,7 @@ export default function OnboardingSubscription() {
       <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
         <Badge className="bg-primary text-primary-foreground">0 · Plan</Badge>
         <Badge variant="muted" className="rounded-full px-4 py-1">1 · Domains</Badge>
-        <Badge variant="muted" className="rounded-full px-4 py-1">2 · Slack</Badge>
+        <Badge variant="muted" className="rounded-full px-4 py-1">2 · Connect</Badge>
         <Badge variant="muted" className="rounded-full px-4 py-1">3 · Embed</Badge>
       </div>
 

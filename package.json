@@ -39,6 +39,7 @@
     "bullmq": "^5.66.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "discord.js": "^14.25.1",
     "express": "^5.2.1",
     "framer-motion": "^12.26.2",
     "ioredis": "^5.8.2",
