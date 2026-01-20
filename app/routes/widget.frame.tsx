@@ -134,7 +134,7 @@ export default function WidgetFrame() {
   const lastMessageTimeRef = useRef<string | null>(null);
 
   const messageFetcher = useFetcher();
-  const pollingFetcher = useFetcher<{ messages: Message[] }>();
+  const [isPolling, setIsPolling] = useState(false);
 
   const [visitorInfo, setVisitorInfo] = useState({
     name: data.name || "",
@@ -161,6 +161,7 @@ export default function WidgetFrame() {
       idleTimeoutRef.current = setTimeout(() => {
         console.log("Chat idle, stopping polling");
         setIsIdle(true);
+        setIsPolling(false);
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
           pollingIntervalRef.current = null;
@@ -207,33 +208,13 @@ export default function WidgetFrame() {
     }
   }, [messageFetcher.data, ticketId]);
 
-  // Handle polling fetcher response
-  useEffect(() => {
-    if (pollingFetcher.data && pollingFetcher.data.messages) {
-      const newMessages = pollingFetcher.data.messages;
-      if (newMessages.length > 0) {
-        lastMessageTimeRef.current =
-          newMessages[newMessages.length - 1].createdAt;
-
-        setMessages((prev) => {
-          const newMsgs = newMessages.filter(
-            (m: Message) => !prev.some((p) => p.id === m.id)
-          );
-          if (newMsgs.length > 0) {
-            window.parent.postMessage({ type: "sw:newMessage" }, "*");
-            return [...prev, ...newMsgs];
-          }
-          return prev;
-        });
-      }
-    }
-  }, [pollingFetcher.data]);
 
   // Start polling for new messages
   const startPolling = useCallback(() => {
-    if (!ticketId) return;
+    if (!ticketId || isPolling) return;
 
     setIsIdle(false);
+    setIsPolling(true);
     resetIdleTimeout();
 
     // Initialize last message time if we have existing messages
@@ -241,15 +222,41 @@ export default function WidgetFrame() {
       lastMessageTimeRef.current = messages[messages.length - 1].createdAt;
     }
 
-    const poll = () => {
-      if (pollingFetcher.state === "idle") {
+    const poll = async () => {
+      try {
         const since = lastMessageTimeRef.current || "";
         const params = new URLSearchParams();
         if (since) params.set("since", since);
 
-        pollingFetcher.load(
+        const response = await fetch(
           `/api/tickets/${ticketId}/messages?${params.toString()}`
         );
+
+        if (!response.ok) {
+          console.error(`Polling failed: ${response.status}`);
+          return;
+        }
+
+        const data = await response.json();
+        const newMessages = data.messages || [];
+
+        if (newMessages.length > 0) {
+          lastMessageTimeRef.current =
+            newMessages[newMessages.length - 1].createdAt;
+
+          setMessages((prev) => {
+            const newMsgs = newMessages.filter(
+              (m: Message) => !prev.some((p) => p.id === m.id)
+            );
+            if (newMsgs.length > 0) {
+              window.parent.postMessage({ type: "sw:newMessage" }, "*");
+              return [...prev, ...newMsgs];
+            }
+            return prev;
+          });
+        }
+      } catch (error) {
+        console.error("Polling error:", error);
       }
     };
 
@@ -258,23 +265,25 @@ export default function WidgetFrame() {
 
     // Set up interval
     pollingIntervalRef.current = setInterval(poll, POLLING_INTERVAL_MS);
-  }, [ticketId, messages, resetIdleTimeout, pollingFetcher]);
+  }, [ticketId, messages, resetIdleTimeout, isPolling]);
 
   // Start/stop polling when ticketId changes
   useEffect(() => {
-    if (ticketId) {
+    if (ticketId && !isPolling) {
       startPolling();
     }
 
     return () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
       }
       if (idleTimeoutRef.current) {
         clearTimeout(idleTimeoutRef.current);
       }
+      setIsPolling(false);
     };
-  }, [ticketId, startPolling]);
+  }, [ticketId, startPolling, isPolling]);
 
   // Notify parent frame that widget is ready
   useEffect(() => {
@@ -283,7 +292,10 @@ export default function WidgetFrame() {
 
   const handleContinueChat = () => {
     if (ticketId) {
-      startPolling();
+      // Force reset isPolling to allow startPolling to restart
+      setIsPolling(false);
+      // Use setTimeout to ensure state update is processed before calling startPolling
+      setTimeout(() => startPolling(), 0);
     }
   };
 

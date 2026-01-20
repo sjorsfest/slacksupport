@@ -97,6 +97,62 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     return Response.json({ ticket });
   }
 
+  // GET /api/tickets/:id/messages - Polling endpoint for widget
+  const messagesMatch = path.match(/^([^/]+)\/messages$/);
+  if (messagesMatch) {
+    const ticketId = messagesMatch[1];
+    const since = url.searchParams.get('since');
+
+    // Verify ticket exists (no auth required for widget polling)
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: { id: true, status: true },
+    });
+
+    if (!ticket) {
+      return Response.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    // Build query for messages
+    const whereClause: {
+      ticketId: string;
+      createdAt?: { gt: Date };
+    } = { ticketId };
+
+    // If 'since' provided, only get messages after that timestamp
+    if (since) {
+      const sinceDate = new Date(since);
+      if (!isNaN(sinceDate.getTime())) {
+        whereClause.createdAt = { gt: sinceDate };
+      }
+    }
+
+    const messages = await prisma.message.findMany({
+      where: whereClause,
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        source: true,
+        text: true,
+        createdAt: true,
+        slackUserName: true,
+        discordUserName: true,
+      },
+    });
+
+    return Response.json({
+      messages: messages.map((m) => ({
+        id: m.id,
+        source: m.source,
+        text: m.text,
+        createdAt: m.createdAt.toISOString(),
+        slackUserName: m.slackUserName,
+        discordUserName: m.discordUserName,
+      })),
+      ticketStatus: ticket.status,
+    });
+  }
+
   return Response.json({ error: 'Not found' }, { status: 404 });
 }
 
