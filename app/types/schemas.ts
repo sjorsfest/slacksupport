@@ -54,7 +54,6 @@ export const updateTicketSchema = z.object({
 
 export const createMessageSchema = z.object({
   text: z.string().min(1, 'Message is required'),
-  source: z.enum(['visitor', 'agent_dashboard']).default('visitor'),
 });
 
 // Webhook schemas

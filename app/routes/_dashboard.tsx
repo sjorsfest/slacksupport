@@ -7,6 +7,7 @@ import {
   redirect,
 } from "react-router";
 import type { LoaderFunctionArgs } from "react-router";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Ticket,
@@ -23,21 +24,23 @@ import { authClient } from "~/lib/auth-client";
 import { prisma } from "~/lib/db.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { Avatar, AvatarFallback } from "~/components/ui/avatar";
+import { Switch } from "~/components/ui/switch";
 import { cn } from "~/lib/utils";
+import { SupportWidget } from "~/components/SupportWidget";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
   const url = new URL(request.url);
   const isOnboardingRoute = url.pathname.startsWith('/onboarding');
 
+  const subscription = await prisma.subscription.findUnique({
+    where: { accountId: user.accountId },
+  });
+  const hasActiveSubscription = !!subscription && ['active', 'trialing'].includes(subscription.status);
 
   if (!isOnboardingRoute) {
-    const subscription = await prisma.subscription.findUnique({
-      where: { accountId: user.accountId },
-    });
-
-    if (!subscription || !['active', 'trialing'].includes(subscription.status)) {
+    if (!hasActiveSubscription) {
       throw redirect('/onboarding/subscription');
     }
   }
@@ -62,7 +65,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     },
   });
 
-  return { user, account };
+  return { user, account, subscription };
 }
 
 const navItems = [
@@ -88,9 +91,17 @@ const navItems = [
 ];
 
 export default function DashboardLayout() {
-  const { user, account } = useLoaderData<typeof loader>();
+  const { user, account, subscription } = useLoaderData<typeof loader>();
   const location = useLocation();
   const navigate = useNavigate();
+  const hasActiveSubscription = !!subscription && ['active', 'trialing'].includes(subscription.status);
+  const [lockedTooltipPath, setLockedTooltipPath] = useState<string | null>(null);
+  const [supportEnabled, setSupportEnabled] = useState(false);
+  const handleLockedNavigation = (path: string | null) => {
+    setLockedTooltipPath(path);
+  };
+
+  console.log(supportEnabled);
 
   const handleLogout = async () => {
     await authClient.signOut({
@@ -103,6 +114,7 @@ export default function DashboardLayout() {
   };
 
   return (
+    <>
     <div className="h-screen flex flex-col lg:flex-row bg-background font-sans overflow-hidden">
       {/* Fun Sidebar - Desktop Only */}
       <aside className="hidden lg:flex w-72 m-4 rounded-3xl bg-card border-2 border-black flex-col overflow-hidden transition-all duration-300 h-[calc(100vh-2rem)] flex-shrink-0" style={{ boxShadow: '4px 4px 0px 0px #1a1a1a' }}>
@@ -129,70 +141,108 @@ export default function DashboardLayout() {
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = location.pathname.startsWith(item.path);
-            return (
-              <Link key={item.path} to={item.path} className="block">
-                <div
-                  className={cn(
-                    "relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group overflow-hidden",
-                    isActive
+            const isLocked = !hasActiveSubscription;
+            const navContent = (
+              <div
+                className={cn(
+                  "relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group overflow-hidden",
+                  isLocked
+                    ? "opacity-60 cursor-not-allowed text-muted-foreground"
+                    : isActive
                       ? "bg-primary/10 text-primary-700 shadow-sm"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeNav"
-                      className="absolute inset-0 bg-primary/10 rounded-xl"
-                      initial={false}
-                      transition={{
-                        type: "spring",
-                        stiffness: 300,
-                        damping: 30,
-                      }}
-                    />
-                  )}
-
-                  <item.icon
-                    className={cn(
-                      "w-5 h-5 relative z-10 transition-transform group-hover:scale-110 group-hover:rotate-3",
-                      isActive ? "text-primary-700" : item.color
-                    )}
+                )}
+              >
+                {isActive && !isLocked && (
+                  <motion.div
+                    layoutId="activeNav"
+                    className="absolute inset-0 bg-primary/10 rounded-xl"
+                    initial={false}
+                    transition={{
+                      type: "spring",
+                      stiffness: 300,
+                      damping: 30,
+                    }}
                   />
+                )}
 
-                  <span className="font-medium relative z-10">
-                    {item.label}
-                  </span>
-
-                  {item.path === "/tickets" && account?._count?.tickets ? (
-                    <Badge variant="fun" className="ml-auto relative z-10">
-                      {account._count.tickets}
-                    </Badge>
-                  ) : null}
-
-                  {item.path === "/connect" && (account?.slackInstallation || account?.discordInstallation) && (
-                    <span className={cn(
-                      "absolute bottom-0.5 left-12 flex items-center gap-1 text-[10px] z-10",
-                      isActive ? "text-primary-700" : "text-muted-foreground"
-                    )}>
-                      {account.slackInstallation && (
-                        <>
-                          <Slack className="w-2.5 h-2.5" />
-                          {account.slackInstallation.slackTeamName}
-                        </>
-                      )}
-                      {account.discordInstallation && !account.slackInstallation && (
-                        <>
-                          <FaDiscord className="w-2.5 h-2.5" />
-                          {account.discordInstallation.discordGuildName}
-                        </>
-                      )}
-                    </span>
+                <item.icon
+                  className={cn(
+                    "w-5 h-5 relative z-10 transition-transform group-hover:scale-110 group-hover:rotate-3",
+                    isLocked ? "text-muted-foreground" : isActive ? "text-primary-700" : item.color
                   )}
-                </div>
-              </Link>
+                />
+
+                <span className="font-medium relative z-10">
+                  {item.label}
+                </span>
+
+                {item.path === "/tickets" && account?._count?.tickets ? (
+                  <Badge variant="fun" className="ml-auto relative z-10">
+                    {account._count.tickets}
+                  </Badge>
+                ) : null}
+
+                {item.path === "/connect" && (account?.slackInstallation || account?.discordInstallation) && (
+                  <span className={cn(
+                    "absolute bottom-0.5 left-12 flex items-center gap-1 text-[10px] z-10",
+                    isLocked ? "text-muted-foreground" : isActive ? "text-primary-700" : "text-muted-foreground"
+                  )}>
+                    {account.slackInstallation && (
+                      <>
+                        <Slack className="w-2.5 h-2.5" />
+                        {account.slackInstallation.slackTeamName}
+                      </>
+                    )}
+                    {account.discordInstallation && !account.slackInstallation && (
+                      <>
+                        <FaDiscord className="w-2.5 h-2.5" />
+                        {account.discordInstallation.discordGuildName}
+                      </>
+                    )}
+                  </span>
+                )}
+              </div>
+            );
+
+            return (
+              isLocked ? (
+                <button
+                  key={item.path}
+                  type="button"
+                  onMouseEnter={() => handleLockedNavigation(item.path)}
+                  onMouseLeave={() => handleLockedNavigation(null)}
+                  onFocus={() => handleLockedNavigation(item.path)}
+                  onBlur={() => handleLockedNavigation(null)}
+                  className="relative block w-full text-left"
+                  aria-disabled="true"
+                >
+                  {navContent}
+                  {lockedTooltipPath === item.path && (
+                    <div className="absolute left-1/2 top-full z-20 mt-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-foreground shadow-md">
+                      Subscribe to unlock navigation
+                    </div>
+                  )}
+                </button>
+              ) : (
+                <Link key={item.path} to={item.path} className="block">
+                  {navContent}
+                </Link>
+              )
             );
           })}
         </nav>
+
+        <div className="px-3 pb-2">
+          <div className="flex items-center gap-4 rounded-xl px-4 py-3 text-muted-foreground">
+            <span className="font-sm">Need help? Toggle this!</span>
+            <Switch
+              checked={supportEnabled}
+              onChange={(event) => setSupportEnabled(event.target.checked)}
+              className="h-5 w-9 border-2 border-black bg-white shadow-[2px_2px_0_#1a1a1a] after:left-[2px] after:top-[2px] after:h-3 after:w-3 after:border-2 after:border-black after:bg-white peer-checked:after:translate-x-4"
+            />
+          </div>
+        </div>
 
         {/* User Profile */}
         <div className="p-4 border-t border-border/50 bg-muted/20">
@@ -296,5 +346,7 @@ export default function DashboardLayout() {
         </div>
       </nav>
     </div>
+
+    </>
   );
 }

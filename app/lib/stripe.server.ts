@@ -42,16 +42,9 @@ export async function listPricesForProduct(productId: string) {
 /**
  * Get a product with all its active prices.
  */
-export async function getProductWithPrices(productId: string) {
-  const [product, prices] = await Promise.all([
-    stripe.products.retrieve(productId),
-    stripe.prices.list({ product: productId, active: true }),
-  ]);
-
-  return {
-    product,
-    prices: prices.data,
-  };
+export async function getPrices(productId: string) {
+  const prices = await stripe.prices.list({ product: productId, active: true });
+  return prices.data;
 }
 
 /**

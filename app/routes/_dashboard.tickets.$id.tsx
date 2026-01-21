@@ -57,6 +57,7 @@ type Message = {
   text: string;
   createdAt: string;
   slackUserName: string | null;
+  discordUserName: string | null;
 };
 
 const statusOptions = ['OPEN', 'PENDING', 'RESOLVED', 'CLOSED'];
@@ -71,55 +72,14 @@ const statusColors: Record<string, string> = {
 
 export default function TicketDetail() {
   const { ticket, user, baseUrl } = useLoaderData<typeof loader>();
-  const params = useParams();
   const [messages, setMessages] = useState<Message[]>(ticket.messages);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const wsRef = useRef<WebSocket | null>(null);
+
 
   // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  // WebSocket connection
-  const connectWebSocket = useCallback(() => {
-    const wsUrl = `${baseUrl.replace('http', 'ws')}/ws?ticketId=${params.id}`;
-    const ws = new WebSocket(wsUrl);
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'message' && data.data) {
-          const newMessage: Message = {
-            id: data.data.messageId,
-            source: data.data.source,
-            text: data.data.text,
-            createdAt: data.data.createdAt,
-            slackUserName: data.data.slackUserName,
-          };
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === newMessage.id)) return prev;
-            return [...prev, newMessage];
-          });
-        }
-      } catch (e) {
-        console.error('Failed to parse WebSocket message:', e);
-      }
-    };
-
-    ws.onclose = () => {
-      setTimeout(connectWebSocket, 3000);
-    };
-
-    wsRef.current = ws;
-  }, [baseUrl, params.id]);
-
-  useEffect(() => {
-    connectWebSocket();
-    return () => {
-      wsRef.current?.close();
-    };
-  }, [connectWebSocket]);
 
   const formatTime = (dateStr: string) => {
     return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -186,9 +146,12 @@ export default function TicketDetail() {
                   {message.source === 'slack' && message.slackUserName && (
                     <span className="font-medium mr-2">{message.slackUserName}</span>
                   )}
-                  {message.source === 'agent_dashboard' && (
-                    <span className="font-medium mr-2">{user.name || 'You'}</span>
-                  )}
+                  {message.source !== 'visitor' &&
+                    (message.slackUserName || message.discordUserName) && (
+                      <span className="font-medium mr-2">
+                        {message.slackUserName || message.discordUserName}
+                      </span>
+                    )}
                   {formatTime(message.createdAt)}
                 </div>
               </div>

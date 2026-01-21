@@ -38,9 +38,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
   var badge = null;
   var tooltip = null;
 
-  // Create container with shadow DOM
-  container = document.createElement('div');
-  container.id = 'support-widget-container';
+  // Create container with shadow DOM (reuse if provided by host page)
+  container = document.getElementById('support-widget-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'support-widget-container';
+    document.body.appendChild(container);
+  }
   var shadow = container.attachShadow({ mode: 'closed' });
   
   // Inject styles
@@ -569,8 +573,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
   });
   
-  // Append to document
-  document.body.appendChild(container);
+  // Append to document if it was created dynamically
+  // (If the host page provided the container, it's already in the DOM.)
   
   if (controlledByHost) {
     setOpen(desiredOpen, false);

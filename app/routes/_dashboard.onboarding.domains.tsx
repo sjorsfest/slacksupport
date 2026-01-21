@@ -50,7 +50,7 @@ export default function Onboarding() {
 
   useEffect(() => {
     if (fetcher.state === 'idle' && fetcher.data) {
-      navigate('/connect');
+      navigate('/onboarding/connect');
     }
   }, [fetcher.state, fetcher.data, navigate]);
 
@@ -145,7 +145,7 @@ export default function Onboarding() {
           <div className="flex justify-end gap-3">
             <Button
               variant="ghost"
-              onClick={() => navigate('/connect')}
+              onClick={() => navigate('/onboarding/connect')}
             >
               Skip for now
             </Button>

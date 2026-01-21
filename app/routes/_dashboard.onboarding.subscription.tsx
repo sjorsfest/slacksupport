@@ -5,7 +5,7 @@ import { requireUser } from '~/lib/auth.server';
 import { prisma } from '~/lib/db.server';
 import { settings } from '~/lib/settings.server';
 import {
-  getProductWithPrices,
+  getPrices,
   getOrCreateCustomer,
   createCheckoutSession,
 } from '~/lib/stripe.server';
@@ -28,11 +28,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
   });
 
   if (subscription && ['active', 'trialing'].includes(subscription.status)) {
-    return redirect('/onboarding');
+    return redirect('/onboarding/domains');
   }
 
   // Fetch the product with all its prices
-  const { product, prices } = await getProductWithPrices(settings.STRIPE_PRODUCT_ID);
+  const prices = await getPrices(settings.STRIPE_PRODUCT_ID);
 
   // Separate monthly and yearly prices
   const monthlyPrice = prices.find((p) => p.recurring?.interval === 'month');
@@ -44,12 +44,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   return {
     user,
-    product: {
-      id: product.id,
-      name: product.name,
-      description: product.description,
-      metadata: product.metadata,
-    },
     monthlyPrice,
     yearlyPrice,
     canceled,
@@ -126,10 +120,11 @@ function formatPrice(amount: number, currency: string) {
 }
 
 export default function OnboardingSubscription() {
-  const { product, monthlyPrice, yearlyPrice, canceled, hasCoupon } = useLoaderData<typeof loader>();
+  const { monthlyPrice, yearlyPrice, canceled, hasCoupon } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
 
   const isSubmitting = fetcher.state !== 'idle';
+  const submittingInterval = fetcher.formData?.get('interval');
 
   // Calculate yearly savings
   const yearlySavingsPercentage = monthlyPrice && yearlyPrice
@@ -231,7 +226,7 @@ export default function OnboardingSubscription() {
                   className="w-full"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'Redirecting...' : 'Select Monthly'}
+                  {isSubmitting && submittingInterval === 'month' ? 'Redirecting...' : 'Select Monthly'}
                 </Button>
               </fetcher.Form>
             </CardContent>
@@ -286,7 +281,7 @@ export default function OnboardingSubscription() {
                   className="w-full"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'Redirecting...' : 'Select Yearly'}
+                  {isSubmitting && submittingInterval === 'year' ? 'Redirecting...' : 'Select Yearly'}
                 </Button>
               </fetcher.Form>
             </CardContent>

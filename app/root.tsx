@@ -6,12 +6,11 @@ import {
   Scripts,
   ScrollRestoration,
 } from "react-router";
-
-import { SupportWidget } from "./components/SupportWidget";
 import { Toaster } from "./components/ui/toaster";
 
 import type { Route } from "./+types/root";
 import "./app.css";
+import { SupportWidget } from "./components/SupportWidget";
 
 export const links: Route.LinksFunction = () => [
   { rel: "icon", href: "/favicon.ico" },
@@ -28,10 +27,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
+    <SupportWidget
+      accountId="cmkmutu7o0000zalwjxgvg6jz"
+      baseUrl="http://localhost:5173"
+    />
         <Toaster />
         <ScrollRestoration />
         <Scripts />
-        <SupportWidget accountId="cmkmgkyhy00008ylwkt95cmba" baseUrl="http://localhost:5173" />
       </body>
     </html>
   );

@@ -27,8 +27,6 @@ enum MessageSource {
   visitor
   slack
   discord
-  agent_dashboard
-  system
 }
 
 enum WebhookDeliveryStatus {

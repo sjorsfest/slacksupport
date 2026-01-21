@@ -344,7 +344,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
       // Check if this is from widget or dashboard
       const user = await getCurrentUser(request);
-      const source = user ? 'agent_dashboard' : data.source;
+      const source = 'visitor';
 
       // Get ticket
       const ticket = await prisma.ticket.findUnique({
@@ -373,9 +373,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
       // Post to Slack thread if exists
       if (ticket.slackChannelId && ticket.slackThreadTs) {
         try {
-          const prefix = source === 'agent_dashboard'
-            ? `💬 *${user?.name || 'Agent'}:*\n`
-            : '👤 *Visitor:*\n';
+          const prefix = source === 'visitor'
+            ? '👤 *Visitor:*\n'
+            : `💬 *${user?.name || 'Agent'}:*\n`;
 
           const slackResult = await postToSlack(
             ticket.accountId,
@@ -398,9 +398,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
       // Post to Discord thread if exists
       if (ticket.discordChannelId && ticket.discordThreadId) {
         try {
-          const prefix = source === 'agent_dashboard'
-            ? `**${user?.name || 'Agent'}:**\n`
-            : '**Visitor:**\n';
+          const prefix = source === 'visitor'
+            ? '**Visitor:**\n'
+            : `**${user?.name || 'Agent'}:**\n`;
 
           const discordResult = await postToDiscord(
             ticket.accountId,
@@ -492,4 +492,3 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   return Response.json({ error: 'Not found' }, { status: 404 });
 }
-

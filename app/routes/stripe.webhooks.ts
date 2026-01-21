@@ -60,7 +60,9 @@ export async function action({ request }: ActionFunctionArgs) {
         break;
       }
 
-      case 'invoice.paid': {
+      case 'invoice.paid':
+      case 'invoice.payment_succeeded':
+      case 'invoice_payment.paid': {
         const invoice = event.data.object as Stripe.Invoice;
         await handleInvoicePaid(invoice);
         break;

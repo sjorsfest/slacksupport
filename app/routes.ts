@@ -14,8 +14,10 @@ export default [
   
   // Dashboard routes (protected)
   layout("routes/_dashboard.tsx", [
-    route("onboarding", "routes/_dashboard.onboarding.tsx"),
+    route("onboarding", "routes/_dashboard.onboarding._index.tsx"),
     route("onboarding/subscription", "routes/_dashboard.onboarding.subscription.tsx"),
+    route("onboarding/domains", "routes/_dashboard.onboarding.domains.tsx"),
+    route("onboarding/connect", "routes/_dashboard.onboarding.connect.tsx"),
     route("tickets", "routes/_dashboard.tickets._index.tsx"),
     route("tickets/:id", "routes/_dashboard.tickets.$id.tsx"),
     route("connect", "routes/_dashboard.connect._index.tsx"),

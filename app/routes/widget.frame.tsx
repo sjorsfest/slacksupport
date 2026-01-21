@@ -109,7 +109,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 type Message = {
   id: string;
-  source: "visitor" | "slack" | "discord" | "agent_dashboard" | "system";
+  source: "visitor" | "slack" | "discord";
   text: string;
   createdAt: string;
   slackUserName?: string | null;
@@ -134,7 +134,7 @@ export default function WidgetFrame() {
   const lastMessageTimeRef = useRef<string | null>(null);
 
   const messageFetcher = useFetcher();
-  const [isPolling, setIsPolling] = useState(false);
+  const isPollingRef = useRef(false);
 
   const [visitorInfo, setVisitorInfo] = useState({
     name: data.name || "",
@@ -161,7 +161,7 @@ export default function WidgetFrame() {
       idleTimeoutRef.current = setTimeout(() => {
         console.log("Chat idle, stopping polling");
         setIsIdle(true);
-        setIsPolling(false);
+        isPollingRef.current = false;
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
           pollingIntervalRef.current = null;
@@ -173,6 +173,12 @@ export default function WidgetFrame() {
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  useEffect(() => {
+    if (!lastMessageTimeRef.current && messages.length > 0) {
+      lastMessageTimeRef.current = messages[messages.length - 1].createdAt;
+    }
   }, [messages]);
 
   // Handle message fetcher response (for sending messages)
@@ -211,16 +217,11 @@ export default function WidgetFrame() {
 
   // Start polling for new messages
   const startPolling = useCallback(() => {
-    if (!ticketId || isPolling) return;
+    if (!ticketId || isPollingRef.current) return;
 
     setIsIdle(false);
-    setIsPolling(true);
+    isPollingRef.current = true;
     resetIdleTimeout();
-
-    // Initialize last message time if we have existing messages
-    if (!lastMessageTimeRef.current && messages.length > 0) {
-      lastMessageTimeRef.current = messages[messages.length - 1].createdAt;
-    }
 
     const poll = async () => {
       try {
@@ -265,11 +266,11 @@ export default function WidgetFrame() {
 
     // Set up interval
     pollingIntervalRef.current = setInterval(poll, POLLING_INTERVAL_MS);
-  }, [ticketId, messages, resetIdleTimeout, isPolling]);
+  }, [ticketId, resetIdleTimeout]);
 
   // Start/stop polling when ticketId changes
   useEffect(() => {
-    if (ticketId && !isPolling) {
+    if (ticketId && !isPollingRef.current) {
       startPolling();
     }
 
@@ -281,9 +282,9 @@ export default function WidgetFrame() {
       if (idleTimeoutRef.current) {
         clearTimeout(idleTimeoutRef.current);
       }
-      setIsPolling(false);
+      isPollingRef.current = false;
     };
-  }, [ticketId, startPolling, isPolling]);
+  }, [ticketId, startPolling]);
 
   // Notify parent frame that widget is ready
   useEffect(() => {
@@ -292,8 +293,8 @@ export default function WidgetFrame() {
 
   const handleContinueChat = () => {
     if (ticketId) {
-      // Force reset isPolling to allow startPolling to restart
-      setIsPolling(false);
+      // Force reset to allow startPolling to restart
+      isPollingRef.current = false;
       // Use setTimeout to ensure state update is processed before calling startPolling
       setTimeout(() => startPolling(), 0);
     }
@@ -343,7 +344,7 @@ export default function WidgetFrame() {
         );
       } else {
         messageFetcher.submit(
-          { text, source: "visitor" },
+          { text },
           {
             method: "POST",
             action: `/api/tickets/${ticketId}/messages`,
@@ -409,10 +410,7 @@ export default function WidgetFrame() {
         <Links />
       </head>
       <body className="h-full bg-transparent overflow-hidden font-sans">
-        <div
-          className="h-full flex flex-col bg-background rounded-2xl overflow-hidden border-[3px] border-black"
-          style={{ boxShadow: "4px 4px 0px 0px #1a1a1a" }}
-        >
+        <div className="h-full flex flex-col bg-background overflow-hidden">
           {/* Header */}
           <div className="p-4 text-white flex items-center justify-between shrink-0 transition-colors duration-300 bg-secondary border-b-2 border-black">
             <div className="flex items-center gap-3">
