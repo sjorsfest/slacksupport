@@ -16,6 +16,7 @@ import {
   Webhook,
   LogOut,
   Slack,
+  CreditCard,
 } from "lucide-react";
 import { FaDiscord } from "react-icons/fa";
 
@@ -68,7 +69,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return { user, account, subscription };
 }
 
-const navItems = [
+const navItems: {
+  path: string;
+  label: string;
+  icon: typeof Ticket;
+  color: string;
+  external?: boolean;
+}[] = [
   { path: "/tickets", label: "Tickets", icon: Ticket, color: "text-blue-500" },
   {
     path: "/connect",
@@ -88,6 +95,13 @@ const navItems = [
     icon: Webhook,
     color: "text-orange-500",
   },
+  {
+    path: "/billing",
+    label: "Billing",
+    icon: CreditCard,
+    color: "text-green-500",
+    external: true,
+  },
 ];
 
 export default function DashboardLayout() {
@@ -101,8 +115,6 @@ export default function DashboardLayout() {
     setLockedTooltipPath(path);
   };
 
-  console.log(supportEnabled);
-
   const handleLogout = async () => {
     await authClient.signOut({
       fetchOptions: {
@@ -113,8 +125,31 @@ export default function DashboardLayout() {
     });
   };
 
+  const handleBillingClick = async () => {
+    try {
+      const response = await fetch("/api/stripe/billing-portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error("Failed to open billing portal:", error);
+    }
+  };
+
   return (
     <>
+    <SupportWidget
+      accountId="cmkmutu7o0000zalwjxgvg6jz"
+      baseUrl="http://localhost:5173"
+      email={user.email}
+      name={user.name || undefined}
+      controlledByHost={true}
+      widgetIsOpen={supportEnabled}
+    />
     <div className="h-screen flex flex-col lg:flex-row bg-background font-sans overflow-hidden">
       {/* Fun Sidebar - Desktop Only */}
       <aside className="hidden lg:flex w-72 m-4 rounded-3xl bg-card border-2 border-black flex-col overflow-hidden transition-all duration-300 h-[calc(100vh-2rem)] flex-shrink-0" style={{ boxShadow: '4px 4px 0px 0px #1a1a1a' }}>
@@ -224,6 +259,15 @@ export default function DashboardLayout() {
                     </div>
                   )}
                 </button>
+              ) : item.external ? (
+                <button
+                  key={item.path}
+                  type="button"
+                  onClick={handleBillingClick}
+                  className="block w-full text-left cursor-pointer"
+                >
+                  {navContent}
+                </button>
               ) : (
                 <Link key={item.path} to={item.path} className="block">
                   {navContent}
@@ -315,17 +359,8 @@ export default function DashboardLayout() {
         <div className="flex items-center justify-around p-2">
           {navItems.map((item) => {
             const isActive = location.pathname.startsWith(item.path);
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  "flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 min-w-[4rem]",
-                  isActive
-                    ? "text-primary-700"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
+            const content = (
+              <>
                 <div
                   className={cn(
                     "p-1.5 rounded-lg transition-colors",
@@ -340,6 +375,33 @@ export default function DashboardLayout() {
                   />
                 </div>
                 <span className="text-[10px] font-medium">{item.label}</span>
+              </>
+            );
+
+            return item.external ? (
+              <button
+                key={item.path}
+                type="button"
+                onClick={handleBillingClick}
+                className={cn(
+                  "cursor-pointer flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 min-w-[4rem]",
+                  "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {content}
+              </button>
+            ) : (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  "flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 min-w-[4rem]",
+                  isActive
+                    ? "text-primary-700"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {content}
               </Link>
             );
           })}

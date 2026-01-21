@@ -107,7 +107,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
       const session = await createBillingPortalSession({
         customerId: subscription.stripeCustomerId,
-        returnUrl: `${settings.BASE_URL}/settings`,
+        returnUrl: `${settings.BASE_URL}/tickets`,
       });
 
       return Response.json({ url: session.url });

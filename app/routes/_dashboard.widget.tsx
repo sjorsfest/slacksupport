@@ -4,12 +4,13 @@ import type { LoaderFunctionArgs } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles,
-  Copy,
-  Check,
   MessageSquare,
   Palette,
   Globe,
   Code,
+  Check,
+  FileCode,
+  Atom,
 } from "lucide-react";
 
 import { requireUser } from "~/lib/auth.server";
@@ -30,6 +31,7 @@ import { Label } from "~/components/ui/label";
 import { ColorPicker } from "~/components/ui/color-picker";
 import { cn } from "~/lib/utils";
 import { Switch } from "~/components/ui/switch";
+import { CodeBlock } from "~/components/ui/code-block";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
@@ -73,10 +75,10 @@ export default function WidgetSettings() {
   const [saved, setSaved] = useState(false);
   const [domains, setDomains] = useState(allowedDomains);
   const [newDomain, setNewDomain] = useState("");
-  const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<"settings" | "preview">(
     "settings"
   );
+  const [codeType, setCodeType] = useState<"html" | "react">("html");
 
   const configFetcher = useFetcher();
   const domainsFetcher = useFetcher();
@@ -118,6 +120,140 @@ export default function WidgetSettings() {
   };
 </script>
 <script async src="${baseUrl}/widget/loader.js"></script>`;
+
+  // React component code
+  const reactComponentCode = `import { useEffect } from "react";
+
+const WIDGET_BASE_URL = "${baseUrl}";
+
+interface SupportWidgetProps {
+  /** Your unique account ID from Donkey Support */
+  accountId: string;
+  /** Visitor's email address for identification */
+  email?: string;
+  /** Visitor's display name */
+  name?: string;
+  /** Custom data to attach to the conversation (e.g. userId, plan) */
+  metadata?: Record<string, any>;
+  /** Set to true to hide the floating button and control the widget programmatically */
+  controlledByHost?: boolean;
+  /** When controlledByHost is true, use this to open/close the widget */
+  widgetIsOpen?: boolean;
+}
+
+export function SupportWidget({
+  accountId,
+  email,
+  name,
+  metadata,
+  controlledByHost,
+  widgetIsOpen,
+}: SupportWidgetProps) {
+  useEffect(() => {
+    if (controlledByHost && (window as any).SupportWidget) {
+      (window as any).SupportWidget.widgetIsOpen = widgetIsOpen;
+    }
+  }, [controlledByHost, widgetIsOpen]);
+
+  useEffect(() => {
+    (window as any).SupportWidget = {
+      accountId,
+      email,
+      name,
+      metadata,
+      controlledByHost,
+      widgetIsOpen,
+    };
+
+    const scriptId = "support-widget-loader";
+    if (document.getElementById(scriptId)) return;
+
+    const script = document.createElement("script");
+    script.id = scriptId;
+    script.src = WIDGET_BASE_URL + "/widget/loader.js";
+    script.async = true;
+    document.body.appendChild(script);
+  }, [accountId, email, name, metadata, controlledByHost, widgetIsOpen]);
+
+  return null;
+}`;
+
+  const reactUsageProps = [
+    `accountId="${accountId}"`,
+    controlledByHost ? "controlledByHost={true}" : null,
+    controlledByHost ? "widgetIsOpen={isOpen}" : null,
+  ].filter(Boolean);
+
+  const reactUsageCode = controlledByHost
+    ? `import { useState } from "react";
+import { SupportWidget } from "./SupportWidget";
+
+function App() {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <>
+      <button onClick={() => setIsOpen(!isOpen)}>
+        Toggle Support
+      </button>
+      <SupportWidget
+        ${reactUsageProps.join("\n        ")}
+      />
+    </>
+  );
+}`
+    : `import { SupportWidget } from "./SupportWidget";
+
+function App() {
+  return (
+    <SupportWidget
+      ${reactUsageProps.join("\n      ")}
+    />
+  );
+}`;
+
+  const reactUsageCodeWithMetadata = controlledByHost
+    ? `import { useState } from "react";
+import { SupportWidget } from "./SupportWidget";
+
+function App() {
+  const [isOpen, setIsOpen] = useState(false);
+  const user = useCurrentUser(); // Your auth hook
+
+  return (
+    <>
+      <button onClick={() => setIsOpen(!isOpen)}>
+        Toggle Support
+      </button>
+      <SupportWidget
+        ${reactUsageProps.join("\n        ")}
+        email={user.email}
+        name={user.name}
+        metadata={{
+          userId: user.id,
+          plan: user.plan,
+        }}
+      />
+    </>
+  );
+}`
+    : `import { SupportWidget } from "./SupportWidget";
+
+function App() {
+  const user = useCurrentUser(); // Your auth hook
+
+  return (
+    <SupportWidget
+      ${reactUsageProps.join("\n      ")}
+      email={user.email}
+      name={user.name}
+      metadata={{
+        userId: user.id,
+        plan: user.plan,
+      }}
+    />
+  );
+}`;
 
   const handleSaveConfig = () => {
     configFetcher.submit(
@@ -165,12 +301,6 @@ export default function WidgetSettings() {
         encType: "application/json",
       }
     );
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -221,39 +351,6 @@ export default function WidgetSettings() {
             activeTab === "settings" ? "block" : "hidden xl:block"
           )}
         >
-          <Card className="border-border/50 shadow-sm">
-            <CardHeader>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="p-2 bg-amber-100 rounded-lg">
-                  <MessageSquare className="w-5 h-5 text-amber-700" />
-                </div>
-                <CardTitle>Behavior</CardTitle>
-              </div>
-              <CardDescription>
-                Hide the bubble and let your site control open/close state.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <Label className="text-sm font-medium">
-                    Control widget from your site
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Toggle with{" "}
-                    <code className="font-mono">
-                      window.SupportWidget.widgetIsOpen
-                    </code>
-                  </p>
-                </div>
-                <Switch
-                  checked={controlledByHost}
-                  onChange={(e) => setControlledByHost(e.target.checked)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
           <Card className="border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300">
             <CardHeader>
               <div className="flex items-center gap-2 mb-1">
@@ -409,60 +506,135 @@ export default function WidgetSettings() {
 
           <Card className="border-border/50 shadow-sm">
             <CardHeader>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="p-2 bg-slate-100 rounded-lg">
-                  <Code className="w-5 h-5 text-slate-600" />
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-slate-100 rounded-lg">
+                    <Code className="w-5 h-5 text-slate-600" />
+                  </div>
+                  <CardTitle>Installation</CardTitle>
                 </div>
-                <CardTitle>Installation</CardTitle>
+                <div className="flex bg-muted p-1 rounded-lg">
+                  <button
+                    onClick={() => setCodeType("html")}
+                    className={cn(
+                      "px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5",
+                      codeType === "html"
+                        ? "bg-white text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <FileCode className="w-3.5 h-3.5" />
+                    HTML
+                  </button>
+                  <button
+                    onClick={() => setCodeType("react")}
+                    className={cn(
+                      "px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5",
+                      codeType === "react"
+                        ? "bg-white text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Atom className="w-3.5 h-3.5" />
+                    React
+                  </button>
+                </div>
               </div>
               <CardDescription>
-                Copy-paste this magic code before the closing{" "}
-                <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">
-                  &lt;/body&gt;
-                </code>{" "}
-                tag.
+                {codeType === "html" ? (
+                  <>
+                    Copy-paste this magic code before the closing{" "}
+                    <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">
+                      &lt;/body&gt;
+                    </code>{" "}
+                    tag.
+                  </>
+                ) : (
+                  <>
+                    Create the component and add it to your React app.
+                  </>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="relative group">
-                <pre className="bg-slate-950 text-slate-100 p-4 rounded-xl text-sm overflow-x-auto font-mono border border-slate-800 shadow-inner">
-                  <code>{embedCode}</code>
-                </pre>
-                <Button
-                  onClick={() => copyToClipboard(embedCode)}
-                  variant="secondary"
-                  size="sm"
-                  className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                >
-                  {copied ? (
-                    <Check className="w-4 h-4 text-green-600" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                </Button>
+              <div className="flex items-center justify-between gap-4 p-3 bg-muted/30 rounded-lg">
+                <div>
+                  <Label className="text-sm font-medium">
+                    Control widget from your site
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Hide the bubble and toggle with{" "}
+                    <code className="font-mono bg-muted px-1 py-0.5 rounded">
+                      window.SupportWidget.widgetIsOpen
+                    </code>
+                  </p>
+                </div>
+                <Switch
+                  checked={controlledByHost}
+                  onChange={(e) => setControlledByHost(e.target.checked)}
+                />
               </div>
 
-              <details className="group">
-                <summary className="flex items-center gap-2 text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none">
-                  <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs group-open:rotate-90 transition-transform">
-                    ▶
+              {codeType === "html" ? (
+                <>
+                  <CodeBlock code={embedCode} language="html" />
+
+                  <details className="group">
+                    <summary className="flex items-center gap-2 text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none">
+                      <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs group-open:rotate-90 transition-transform">
+                        ▶
+                      </div>
+                      Advanced: Identify your users
+                    </summary>
+                    <div className="mt-3">
+                      <CodeBlock code={embedCodeWithMetadata} language="html" />
+                    </div>
+                  </details>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-xs font-bold text-slate-600">
+                        1
+                      </span>
+                      <span className="text-sm font-medium">
+                        Create{" "}
+                        <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">
+                          SupportWidget.tsx
+                        </code>
+                      </span>
+                    </div>
+                    <CodeBlock
+                      code={reactComponentCode}
+                      language="tsx"
+                      className="[&_pre]:max-h-64 [&_pre]:overflow-y-auto [&_pre]:text-xs"
+                    />
                   </div>
-                  Advanced: Identify your users
-                </summary>
-                <div className="mt-3 relative group">
-                  <pre className="bg-slate-950 text-slate-100 p-4 rounded-xl text-sm overflow-x-auto font-mono border border-slate-800 shadow-inner">
-                    <code>{embedCodeWithMetadata}</code>
-                  </pre>
-                  <Button
-                    onClick={() => copyToClipboard(embedCodeWithMetadata)}
-                    variant="secondary"
-                    size="sm"
-                    className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                </div>
-              </details>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-xs font-bold text-slate-600">
+                        2
+                      </span>
+                      <span className="text-sm font-medium">Use the component</span>
+                    </div>
+                    <CodeBlock code={reactUsageCode} language="tsx" />
+                  </div>
+
+                  <details className="group">
+                    <summary className="flex items-center gap-2 text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none">
+                      <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs group-open:rotate-90 transition-transform">
+                        ▶
+                      </div>
+                      Advanced: Identify your users
+                    </summary>
+                    <div className="mt-3">
+                      <CodeBlock code={reactUsageCodeWithMetadata} language="tsx" />
+                    </div>
+                  </details>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>

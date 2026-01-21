@@ -51,6 +51,39 @@ export async function loader({ request }: LoaderFunctionArgs) {
     throw new Response("Widget not configured", { status: 404 });
   }
 
+  // Validate allowed domains if configured
+  const allowedDomains = widgetConfig.account.allowedDomains || [];
+  if (allowedDomains.length > 0) {
+    const referer = request.headers.get("Referer");
+    const origin = request.headers.get("Origin");
+
+    // Get the domain from referer or origin header
+    let requestDomain: string | null = null;
+    try {
+      if (referer) {
+        requestDomain = new URL(referer).hostname;
+      } else if (origin) {
+        requestDomain = new URL(origin).hostname;
+      }
+    } catch {
+      // Invalid URL in headers
+    }
+
+    if (!requestDomain) {
+      throw new Response("Unauthorized: Unable to verify origin", { status: 403 });
+    }
+
+    // Check if the request domain matches any allowed domain
+    const isAllowed = allowedDomains.some((allowed) => {
+      // Exact match or subdomain match (e.g., "example.com" allows "sub.example.com")
+      return requestDomain === allowed || requestDomain.endsWith(`.${allowed}`);
+    });
+
+    if (!isAllowed) {
+      throw new Response("Unauthorized: Domain not allowed", { status: 403 });
+    }
+  }
+
   let existingTicket = null;
   if (visitorId) {
     const visitor = await prisma.visitor.findUnique({
@@ -412,7 +445,10 @@ export default function WidgetFrame() {
       <body className="h-full bg-transparent overflow-hidden font-sans">
         <div className="h-full flex flex-col bg-background overflow-hidden">
           {/* Header */}
-          <div className="p-4 text-white flex items-center justify-between shrink-0 transition-colors duration-300 bg-secondary border-b-2 border-black">
+          <div
+            className="p-4 text-white flex items-center justify-between shrink-0 transition-colors duration-300 border-b-2 border-black"
+            style={{ backgroundColor: data.config.primaryColor }}
+          >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm shadow-inner">
                 <Sparkles className="w-5 h-5 text-white animate-pulse" />
@@ -450,7 +486,10 @@ export default function WidgetFrame() {
                       ease: "easeInOut",
                     }}
                   >
-                    <PartyPopper className="w-10 h-10 text-secondary" />
+                    <PartyPopper
+                      className="w-10 h-10"
+                      style={{ color: data.config.accentColor }}
+                    />
                   </motion.div>
                   <h2 className="font-display text-3xl font-bold mb-2 text-primary">
                     Welcome! 👋
@@ -478,7 +517,7 @@ export default function WidgetFrame() {
                       }
                       placeholder="What should we call you?"
                       required
-                      className="bg-white border-slate-200 h-12 rounded-xl text-base shadow-sm focus:ring-2 focus:ring-secondary/20"
+                      className="bg-white border-slate-200 h-12 rounded-xl text-base shadow-sm focus:ring-2 focus:ring-slate-300"
                     />
                   </div>
                   <div className="space-y-2">
@@ -500,12 +539,13 @@ export default function WidgetFrame() {
                       }
                       placeholder="Where can we reach you?"
                       required
-                      className="bg-white border-slate-200 h-12 rounded-xl text-base shadow-sm focus:ring-2 focus:ring-secondary/20"
+                      className="bg-white border-slate-200 h-12 rounded-xl text-base shadow-sm focus:ring-2 focus:ring-slate-300"
                     />
                   </div>
                   <Button
                     type="submit"
-                    className="w-full font-bold text-lg h-12 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] bg-secondary text-white border-0"
+                    className="w-full font-bold text-lg h-12 rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] text-white border-0"
+                    style={{ backgroundColor: data.config.accentColor }}
                   >
                     Start Chatting
                   </Button>
@@ -578,10 +618,15 @@ export default function WidgetFrame() {
                                 className={cn(
                                   "p-3.5 rounded-2xl text-sm shadow-sm leading-relaxed",
                                   isVisitor
-                                    ? "text-white rounded-tr-none bg-secondary"
+                                    ? "text-white rounded-tr-none"
                                     : "bg-white text-slate-700 rounded-tl-none border border-slate-100",
                                   msg.pending && "opacity-70"
                                 )}
+                                style={
+                                  isVisitor
+                                    ? { backgroundColor: data.config.accentColor }
+                                    : undefined
+                                }
                               >
                                 {msg.text}
                               </div>
@@ -628,7 +673,7 @@ export default function WidgetFrame() {
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Type a message..."
-                        className="min-h-12 max-h-32 py-3.5 resize-none rounded-2xl pr-12 bg-slate-50 focus:bg-white transition-all border-slate-200 focus-visible:ring-2 focus-visible:ring-secondary/20 focus-visible:border-secondary/50"
+                        className="min-h-12 max-h-32 py-3.5 resize-none rounded-2xl pr-12 bg-slate-50 focus:bg-white transition-all border-slate-200 focus-visible:ring-2 focus-visible:ring-slate-300 focus-visible:border-slate-400"
                         rows={1}
                       />
                       <Button
@@ -638,11 +683,12 @@ export default function WidgetFrame() {
                           !inputValue.trim() || messageFetcher.state !== "idle"
                         }
                         className={cn(
-                          "absolute right-1.5 bottom-1.5 h-10 w-10 rounded-full transition-all duration-200 shadow-sm bg-secondary border-0",
+                          "absolute right-1.5 bottom-1.5 h-10 w-10 rounded-full transition-all duration-200 shadow-sm border-0",
                           inputValue.trim()
                             ? "scale-100 opacity-100"
                             : "scale-90 opacity-0"
                         )}
+                        style={{ backgroundColor: data.config.accentColor }}
                       >
                         <Send className="w-5 h-5 text-white" />
                       </Button>
@@ -651,7 +697,7 @@ export default function WidgetFrame() {
                   <div className="text-center mt-3">
                     <a
                       href="#"
-                      className="text-[10px] font-bold text-slate-300 hover:text-secondary transition-colors uppercase tracking-widest"
+                      className="text-[10px] font-bold text-slate-300 hover:text-slate-500 transition-colors uppercase tracking-widest"
                     >
                       Powered by Donkey Support
                     </a>

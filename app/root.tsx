@@ -27,10 +27,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
-    <SupportWidget
-      accountId="cmkmutu7o0000zalwjxgvg6jz"
-      baseUrl="http://localhost:5173"
-    />
         <Toaster />
         <ScrollRestoration />
         <Scripts />

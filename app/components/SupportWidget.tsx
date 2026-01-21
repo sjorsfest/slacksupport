@@ -7,6 +7,8 @@ interface SupportWidgetProps {
   name?: string;
   metadata?: Record<string, any>;
   primaryColor?: string;
+  controlledByHost?: boolean;
+  widgetIsOpen?: boolean;
 }
 
 declare global {
@@ -17,6 +19,8 @@ declare global {
       name?: string;
       metadata?: Record<string, any>;
       primaryColor?: string;
+      controlledByHost?: boolean;
+      widgetIsOpen?: boolean;
     };
   }
 }
@@ -28,7 +32,16 @@ export function SupportWidget({
   name,
   metadata,
   primaryColor,
+  controlledByHost,
+  widgetIsOpen,
 }: SupportWidgetProps) {
+  // Update widgetIsOpen when the prop changes (for controlled mode)
+  useEffect(() => {
+    if (controlledByHost && window.SupportWidget) {
+      window.SupportWidget.widgetIsOpen = widgetIsOpen;
+    }
+  }, [controlledByHost, widgetIsOpen]);
+
   useEffect(() => {
     // Set global configuration
     window.SupportWidget = {
@@ -37,6 +50,8 @@ export function SupportWidget({
       name,
       metadata,
       primaryColor,
+      controlledByHost,
+      widgetIsOpen,
     };
 
     // Check if script is already loaded
