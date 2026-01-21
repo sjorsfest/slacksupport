@@ -66,7 +66,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     },
   });
 
-  return { user, account, subscription };
+  return { user, account, subscription, baseUrl: process.env.BASE_URL || "" };
 }
 
 const navItems: {
@@ -105,7 +105,7 @@ const navItems: {
 ];
 
 export default function DashboardLayout() {
-  const { user, account, subscription } = useLoaderData<typeof loader>();
+  const { user, account, subscription, baseUrl } = useLoaderData<typeof loader>();
   const location = useLocation();
   const navigate = useNavigate();
   const hasActiveSubscription = !!subscription && ['active', 'trialing'].includes(subscription.status);
@@ -143,8 +143,8 @@ export default function DashboardLayout() {
   return (
     <>
     <SupportWidget
-      accountId="cmknxg4po0000u8lw46b71lo9"
-      baseUrl="http://localhost:5173"
+      accountId="cmko5bowa00004klw32o9c6b3"
+      baseUrl={baseUrl}
       email={user.email}
       name={user.name || undefined}
       controlledByHost={true}

@@ -448,19 +448,19 @@ export default function WidgetFrame() {
         <div className="h-full flex flex-col bg-background overflow-hidden">
           {/* Header */}
           <div
-            className="p-4 text-white flex items-center justify-between shrink-0 transition-colors duration-300 border-b-2 border-black"
+            className="p-6 text-white flex items-center justify-between shrink-0 transition-colors duration-300 border-b-2 border-black"
             style={{ backgroundColor: data.config.primaryColor }}
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm shadow-inner">
-                <Sparkles className="w-5 h-5 text-white animate-pulse" />
+                <Sparkles className="w-6 h-6 text-white animate-pulse" />
               </div>
               <div>
                 <h1 className="font-display font-bold text-lg leading-tight tracking-wide">
                   {data.config.companyName}
                 </h1>
                 <p className="text-xs text-white/90 font-medium">
-                  We reply in a few minutes
+                  We reply fast!
                 </p>
               </div>
             </div>
@@ -556,9 +556,12 @@ export default function WidgetFrame() {
             ) : (
               <div className="h-full flex flex-col">
                 {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth">
+                <div className={cn(
+                  "flex-1 p-4 space-y-6 scroll-smooth",
+                  messages.length === 0 ? "overflow-hidden" : "overflow-y-auto"
+                )}>
                   {messages.length === 0 && (
-                    <div className="flex-1 h-full flex items-center justify-center text-center p-4">
+                    <div className="h-full flex items-center justify-center text-center p-4">
                       <motion.div
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
@@ -703,14 +706,6 @@ export default function WidgetFrame() {
                       </Button>
                     </div>
                   )}
-                  <div className="text-center mt-3">
-                    <a
-                      href="#"
-                      className="text-[10px] font-bold text-slate-300 hover:text-slate-500 transition-colors uppercase tracking-widest"
-                    >
-                      Powered by Donkey Support
-                    </a>
-                  </div>
                 </div>
               </div>
             )}

@@ -215,8 +215,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
       max-height: calc(100vh - 130px);
       border-radius: 24px;
       overflow: hidden;
-      border: 3px solid #1a1a1a;
-      box-shadow: 4px 4px 0px 0px #1a1a1a;
+      line-height: 0;
+      box-shadow: 0 0 0 3px #1a1a1a, 4px 4px 0px 0px #1a1a1a;
       opacity: 0;
       transform: translateY(20px) scale(0.96);
       transform-origin: bottom right;
@@ -239,6 +239,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
       height: 100%;
       border: none;
       background: white;
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: 24px;
     }
 
     /* Animations */

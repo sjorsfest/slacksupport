@@ -668,12 +668,48 @@ function App() {
 
               <div className="rounded-[2rem] overflow-hidden w-full h-full bg-white relative">
                 {/* Mock Website Content */}
-                <div className="absolute inset-0 bg-slate-50 p-4 overflow-hidden opacity-50 pointer-events-none">
-                  <div className="h-8 w-24 bg-slate-200 rounded-lg mb-8" />
-                  <div className="space-y-4">
-                    <div className="h-32 bg-slate-200 rounded-2xl" />
-                    <div className="h-4 w-3/4 bg-slate-200 rounded" />
-                    <div className="h-4 w-1/2 bg-slate-200 rounded" />
+                <div className="absolute inset-0 bg-slate-50 p-4 overflow-hidden opacity-60 pointer-events-none">
+                  <div className="flex items-center justify-between">
+                    <div className="h-6 w-16 bg-slate-200 rounded-full" />
+                    <div className="flex gap-2">
+                      <div className="h-3 w-8 bg-slate-200 rounded-full" />
+                      <div className="h-3 w-8 bg-slate-200 rounded-full" />
+                      <div className="h-3 w-8 bg-slate-200 rounded-full" />
+                    </div>
+                  </div>
+                  <div className="mt-6 space-y-4">
+                    <div className="bg-white/70 border border-slate-200 rounded-2xl p-4 shadow-[0_2px_0_0_rgba(15,23,42,0.05)]">
+                      <div className="h-24 bg-slate-200 rounded-xl mb-3" />
+                      <div className="h-3 w-3/4 bg-slate-200 rounded mb-2" />
+                      <div className="h-3 w-1/2 bg-slate-200 rounded" />
+                      <div className="mt-3 h-8 w-24 bg-slate-200 rounded-full" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-white/70 border border-slate-200 rounded-xl p-3 shadow-[0_2px_0_0_rgba(15,23,42,0.05)]">
+                        <div className="h-10 w-10 bg-slate-200 rounded-lg mb-2" />
+                        <div className="h-3 w-3/4 bg-slate-200 rounded" />
+                      </div>
+                      <div className="bg-white/70 border border-slate-200 rounded-xl p-3 shadow-[0_2px_0_0_rgba(15,23,42,0.05)]">
+                        <div className="h-10 w-10 bg-slate-200 rounded-lg mb-2" />
+                        <div className="h-3 w-2/3 bg-slate-200 rounded" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 bg-slate-200 rounded-full" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-3 w-2/3 bg-slate-200 rounded" />
+                          <div className="h-3 w-1/3 bg-slate-200 rounded" />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 bg-slate-200 rounded-full" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-3 w-1/2 bg-slate-200 rounded" />
+                          <div className="h-3 w-2/5 bg-slate-200 rounded" />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
