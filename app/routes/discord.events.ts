@@ -1,9 +1,12 @@
 import crypto from 'crypto';
 import type { ActionFunctionArgs } from 'react-router';
+import { TicketStatus } from '@prisma/client';
 import { enqueueDiscordEvent } from '~/lib/redis.server';
 import { isServerless, getDeploymentEnvironment } from '~/lib/env.server';
 import { processDiscordEvent, type DiscordEventPayload } from '~/lib/discord-processor.server';
 import { settings } from '~/lib/settings.server';
+import { prisma } from '~/lib/db.server';
+import { updateDiscordMessage } from '~/lib/discord.server';
 
 /**
  * Verify Discord interaction signature using Ed25519.
@@ -81,6 +84,97 @@ export async function action({ request }: ActionFunctionArgs) {
   // Handle Discord Interactions endpoint PING (type 1)
   if (payload.type === 1) {
     return new Response(JSON.stringify({ type: 1 }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  // Handle Message Component interactions (type 3) - button clicks
+  if (payload.type === 3) {
+    const interaction = payload as {
+      data?: { custom_id?: string };
+      guild_id?: string;
+      channel_id?: string;
+      message?: { id: string };
+    };
+
+    const customId = interaction.data?.custom_id;
+    if (customId?.startsWith('toggle_status:')) {
+      const ticketId = customId.replace('toggle_status:', '');
+
+      // Find installation by guild ID
+      const guildId = interaction.guild_id;
+      const installation = await prisma.discordInstallation.findFirst({
+        where: { discordGuildId: guildId },
+        select: { accountId: true },
+      });
+
+      if (!installation) {
+        return new Response(
+          JSON.stringify({
+            type: 4, // Channel message with source
+            data: { content: 'Installation not found', flags: 64 }, // Ephemeral
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get current ticket
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+        include: {
+          messages: { orderBy: { createdAt: 'asc' }, take: 1 },
+          visitor: true,
+        },
+      });
+
+      if (!ticket) {
+        return new Response(
+          JSON.stringify({
+            type: 4,
+            data: { content: 'Ticket not found', flags: 64 },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Toggle status between OPEN and CLOSED
+      const newStatus = ticket.status === TicketStatus.OPEN ? TicketStatus.CLOSED : TicketStatus.OPEN;
+
+      // Update ticket in database
+      const updatedTicket = await prisma.ticket.update({
+        where: { id: ticketId },
+        data: { status: newStatus },
+        include: {
+          messages: { orderBy: { createdAt: 'asc' }, take: 1 },
+          visitor: true,
+        },
+      });
+
+      // Update the Discord message
+      const channelId = interaction.channel_id;
+      const messageId = interaction.message?.id;
+
+      if (channelId && messageId) {
+        await updateDiscordMessage(installation.accountId, channelId, messageId, {
+          id: updatedTicket.id,
+          status: updatedTicket.status,
+          firstMessage: updatedTicket.messages[0]?.text || 'No message',
+          visitorEmail: updatedTicket.visitor.email || undefined,
+          visitorName: updatedTicket.visitor.name || undefined,
+          metadata: updatedTicket.visitor.metadata as Record<string, unknown>,
+        });
+      }
+
+      // Respond with update acknowledgement (type 6 = deferred update, no visible response)
+      return new Response(JSON.stringify({ type: 6 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Unknown component interaction
+    return new Response(JSON.stringify({ type: 6 }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });

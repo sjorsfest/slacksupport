@@ -11,16 +11,7 @@ datasource db {
 // Enums
 enum TicketStatus {
   OPEN
-  PENDING
-  RESOLVED
   CLOSED
-}
-
-enum TicketPriority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
 }
 
 enum MessageSource {
@@ -217,7 +208,7 @@ model WidgetConfig {
   accountId       String   @unique
   primaryColor    String   @default("#4A154B")
   accentColor     String   @default("#1264A3")
-  greetingText    String   @default("Hi! How can we help you today?")
+  greetingText    String   @default("What's cooking? 🍳")
   companyName     String?
   controlledByHost Boolean @default(false)
   officeHoursStart String?  // e.g., "09:00"
@@ -255,7 +246,6 @@ model Ticket {
   id                  String         @id @default(cuid())
   accountId           String
   status              TicketStatus   @default(OPEN)
-  priority            TicketPriority @default(MEDIUM)
   subject             String?
   visitorId           String
   assignedUserId      String?

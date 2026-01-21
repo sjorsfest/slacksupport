@@ -7,7 +7,9 @@
       "WebFetch(domain:better-auth.com)",
       "Bash(npm install:*)",
       "Bash(npm run db:generate:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npx prisma db execute:*)",
+      "Bash(npm run db:push:*)"
     ],
     "defaultMode": "plan"
   }

@@ -3,6 +3,25 @@ import { redirect } from 'react-router';
 import { prisma } from '~/lib/db.server';
 import { exchangeDiscordCode, storeDiscordInstallation, getBotUser, getGuildInfo } from '~/lib/discord.server';
 
+function getReturnTo(state: string): string | null {
+  const parts = state.split('.', 2);
+  if (parts.length < 2) return null;
+  try {
+    const decoded = Buffer.from(parts[1], 'base64url').toString('utf8');
+    return decoded.startsWith('/onboarding') ? decoded : null;
+  } catch {
+    return null;
+  }
+}
+
+function buildRedirect(basePath: string, params: Record<string, string>) {
+  const url = new URL(basePath, 'http://localhost');
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+  return url.pathname + url.search;
+}
+
 /**
  * GET /discord/oauth/callback
  * Handles the OAuth callback from Discord.
@@ -38,6 +57,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 
   const accountId = oauthState.accountId;
+  const returnTo = getReturnTo(state);
+  const redirectBase = returnTo ?? '/connect/discord';
 
   // Delete used state
   await prisma.oAuthState.delete({ where: { id: oauthState.id } });
@@ -48,7 +69,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     if (!response.ok) {
       console.error('Discord token exchange failed:', response.error);
-      return redirect('/connect/discord?error=token_exchange_failed');
+      return redirect(buildRedirect(redirectBase, { error: 'token_exchange_failed' }));
     }
 
     // Get guild info - either from response or from guild_id param
@@ -62,14 +83,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     if (!guild) {
       console.error('Discord: No guild info available');
-      return redirect('/connect/discord?error=no_guild');
+      return redirect(buildRedirect(redirectBase, { error: 'no_guild' }));
     }
 
     // Get bot user info
     const botUser = await getBotUser();
     if (!botUser) {
       console.error('Discord: Failed to get bot user info');
-      return redirect('/connect/discord?error=bot_error');
+      return redirect(buildRedirect(redirectBase, { error: 'bot_error' }));
     }
 
     // Store installation
@@ -81,9 +102,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
     });
 
     console.log('Discord installation successful for account:', accountId);
-    return redirect('/connect/discord?success=true');
+    return redirect(buildRedirect(redirectBase, { success: 'true' }));
   } catch (err) {
     console.error('Discord OAuth callback error:', err);
-    return redirect('/connect/discord?error=internal_error');
+    return redirect(buildRedirect(redirectBase, { error: 'internal_error' }));
   }
 }

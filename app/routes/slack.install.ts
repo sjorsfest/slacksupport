@@ -12,6 +12,7 @@ import { generateSecureToken } from '~/lib/crypto.server';
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const accountId = url.searchParams.get('account_id');
+  const returnTo = url.searchParams.get('return_to');
 
   if (!accountId) {
     return new Response('Missing account_id parameter', { status: 400 });
@@ -29,7 +30,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
   console.log('Slack install for account:', accountId);
 
   // Generate state token for CSRF protection
-  const state = generateSecureToken();
+  const safeReturnTo = returnTo && returnTo.startsWith('/onboarding') ? returnTo : null;
+  const stateToken = generateSecureToken();
+  const state = safeReturnTo
+    ? `${stateToken}.${Buffer.from(safeReturnTo).toString('base64url')}`
+    : stateToken;
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
   // Store state in database
@@ -45,4 +50,3 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const authUrl = getSlackAuthUrl(state);
   return redirect(authUrl);
 }
-

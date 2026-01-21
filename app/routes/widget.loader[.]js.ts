@@ -479,6 +479,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   if (controlledByHost) {
     button.style.display = 'none';
     tooltip.style.display = 'none';
+    frameContainer.style.setProperty('bottom', '24px', 'important');
+    frameContainer.style.setProperty('max-height', 'calc(100vh - 48px)', 'important');
   }
   
   // Show tooltip after delay

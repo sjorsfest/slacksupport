@@ -1,7 +1,7 @@
 import { Link, useLoaderData, useSearchParams } from 'react-router';
 import type { LoaderFunctionArgs } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, MessageSquare, AlertCircle, CheckCircle2, Circle } from 'lucide-react';
+import { Clock, MessageSquare, CheckCircle2, Circle } from 'lucide-react';
 
 import { requireUser } from '~/lib/auth.server';
 import { prisma } from '~/lib/db.server';
@@ -21,7 +21,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   const where = {
     accountId: user.accountId,
-    ...(status && { status: status as 'OPEN' | 'PENDING' | 'RESOLVED' | 'CLOSED' }),
+    ...(status && { status: status as 'OPEN' | 'CLOSED' }),
   };
 
   const [tickets, total, statusCounts] = await Promise.all([
@@ -48,8 +48,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   const counts = {
     OPEN: statusCounts.find((s) => s.status === 'OPEN')?._count || 0,
-    PENDING: statusCounts.find((s) => s.status === 'PENDING')?._count || 0,
-    RESOLVED: statusCounts.find((s) => s.status === 'RESOLVED')?._count || 0,
     CLOSED: statusCounts.find((s) => s.status === 'CLOSED')?._count || 0,
   };
 
@@ -57,7 +55,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     tickets: tickets.map((t) => ({
       id: t.id,
       status: t.status,
-      priority: t.priority,
       visitor: t.visitor,
       lastMessage: t.messages[0] || null,
       createdAt: t.createdAt.toISOString(),
@@ -70,16 +67,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 const statusConfig = {
   OPEN: { color: 'bg-blue-500', icon: Circle, label: 'Open' },
-  PENDING: { color: 'bg-amber-500', icon: Clock, label: 'Pending' },
-  RESOLVED: { color: 'bg-emerald-500', icon: CheckCircle2, label: 'Resolved' },
   CLOSED: { color: 'bg-slate-500', icon: CheckCircle2, label: 'Closed' },
-};
-
-const priorityConfig = {
-  LOW: { color: 'text-slate-500', bg: 'bg-slate-100' },
-  MEDIUM: { color: 'text-blue-600', bg: 'bg-blue-100' },
-  HIGH: { color: 'text-orange-600', bg: 'bg-orange-100' },
-  URGENT: { color: 'text-rose-600', bg: 'bg-rose-100' },
 };
 
 function formatTimeAgo(dateStr: string) {
@@ -142,8 +130,7 @@ export default function TicketsIndex() {
         {[
           { id: '', label: 'All', count: totalTickets },
           { id: 'OPEN', label: 'Open', count: counts.OPEN },
-          { id: 'PENDING', label: 'Pending', count: counts.PENDING },
-          { id: 'RESOLVED', label: 'Resolved', count: counts.RESOLVED },
+          { id: 'CLOSED', label: 'Closed', count: counts.CLOSED },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -222,16 +209,6 @@ export default function TicketsIndex() {
                               </p>
                             </div>
                           </div>
-                          <Badge 
-                            variant="outline" 
-                            className={cn(
-                              "capitalize border-0", 
-                              priorityConfig[ticket.priority].bg,
-                              priorityConfig[ticket.priority].color
-                            )}
-                          >
-                            {ticket.priority.toLowerCase()}
-                          </Badge>
                         </div>
                       </CardHeader>
                       

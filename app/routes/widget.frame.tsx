@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { LoaderFunctionArgs, LinksFunction } from "react-router";
-import { useLoaderData, useFetcher, Links, Meta } from "react-router";
+import { useLoaderData, useFetcher } from "react-router";
 import { motion } from "framer-motion";
-import { Send, X, Sparkles, PartyPopper } from "lucide-react";
+import { Send, X, Sparkles, PartyPopper, AlertTriangle } from "lucide-react";
+import { isRouteErrorResponse, useRouteError } from "react-router";
 
 import { prisma } from "~/lib/db.server";
 import { Button } from "~/components/ui/button";
@@ -35,7 +36,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const name = url.searchParams.get("name");
 
   if (!accountId) {
-    throw new Response("Missing accountId", { status: 400 });
+    throw new Response("MISSING_ACCOUNT_ID", { status: 400 });
+  }
+
+  // Check if the account exists
+  const account = await prisma.account.findUnique({
+    where: { id: accountId },
+    select: { id: true },
+  });
+
+  if (!account) {
+    throw new Response("ACCOUNT_NOT_FOUND", { status: 404 });
   }
 
   const widgetConfig = await prisma.widgetConfig.findUnique({
@@ -48,7 +59,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   });
 
   if (!widgetConfig) {
-    throw new Response("Widget not configured", { status: 404 });
+    throw new Response("WIDGET_NOT_CONFIGURED", { status: 404 });
   }
 
   // Validate allowed domains if configured
@@ -70,7 +81,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
 
     if (!requestDomain) {
-      throw new Response("Unauthorized: Unable to verify origin", { status: 403 });
+      throw new Response("ORIGIN_NOT_VERIFIED", { status: 403 });
     }
 
     // Check if the request domain matches any allowed domain
@@ -80,7 +91,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     });
 
     if (!isAllowed) {
-      throw new Response("Unauthorized: Domain not allowed", { status: 403 });
+      throw new Response("DOMAIN_NOT_ALLOWED", { status: 403 });
     }
   }
 
@@ -96,7 +107,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       include: {
         tickets: {
           where: {
-            status: { in: ["OPEN", "PENDING"] },
+            status: "OPEN",
           },
           orderBy: { createdAt: "desc" },
           take: 1,
@@ -434,15 +445,6 @@ export default function WidgetFrame() {
   }
 
   return (
-    <html lang="en" className="h-full">
-      <head>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Support</title>
-        <Meta />
-        <Links />
-      </head>
-      <body className="h-full bg-transparent overflow-hidden font-sans">
         <div className="h-full flex flex-col bg-background overflow-hidden">
           {/* Header */}
           <div
@@ -556,13 +558,20 @@ export default function WidgetFrame() {
                 {/* Messages Area */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth">
                   {messages.length === 0 && (
-                    <div className="text-center py-12 px-4">
+                    <div className="flex-1 h-full flex items-center justify-center text-center p-4">
                       <motion.div
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className="inline-block bg-white px-6 py-4 rounded-3xl shadow-sm border border-slate-100"
+                        className="bg-white px-5 py-4 rounded-2xl shadow-sm border border-slate-100"
                       >
-                        <p className="text-slate-600 font-medium">
+                        <div className="text-2xl mb-2">👋</div>
+                        <p
+                          className="font-bold mb-1"
+                          style={{ color: data.config.accentColor }}
+                        >
+                          Hi there!
+                        </p>
+                        <p className="text-xs text-slate-500">
                           {data.config.greetingText}
                         </p>
                       </motion.div>
@@ -707,7 +716,119 @@ export default function WidgetFrame() {
             )}
           </div>
         </div>
-      </body>
-    </html>
+  );
+}
+
+// Error messages for different error codes
+const ERROR_MESSAGES: Record<
+  string,
+  { title: string; description: string; hint?: string }
+> = {
+  MISSING_ACCOUNT_ID: {
+    title: "Missing Configuration",
+    description: "The widget is missing the account ID parameter.",
+    hint: "Make sure you're using the correct widget embed code from your dashboard.",
+  },
+  ACCOUNT_NOT_FOUND: {
+    title: "Account Not Found",
+    description: "The account ID provided does not exist.",
+    hint: "Please verify you're using the correct account ID from your dashboard.",
+  },
+  WIDGET_NOT_CONFIGURED: {
+    title: "Widget Not Configured",
+    description: "The support widget hasn't been set up for this account yet.",
+    hint: "Go to your dashboard settings to configure the widget.",
+  },
+  ORIGIN_NOT_VERIFIED: {
+    title: "Origin Not Verified",
+    description: "We couldn't verify the origin of this request.",
+    hint: "This widget must be loaded from an allowed domain.",
+  },
+  DOMAIN_NOT_ALLOWED: {
+    title: "Domain Not Allowed",
+    description: "This widget is not authorized to run on this domain.",
+    hint: "Add this domain to your allowed domains list in the dashboard settings.",
+  },
+};
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+
+
+  let errorCode = "UNKNOWN";
+  let errorInfo: { title: string; description: string; hint?: string } = {
+    title: "Something Went Wrong",
+    description: "An unexpected error occurred while loading the widget.",
+    hint: "Please try refreshing the page or contact support if the issue persists.",
+  };
+
+  if (isRouteErrorResponse(error)) {
+    errorCode = error.data || "UNKNOWN";
+    if (ERROR_MESSAGES[errorCode]) {
+      errorInfo = ERROR_MESSAGES[errorCode];
+    }
+  }
+
+  return (
+        <div className="h-full flex flex-col bg-background overflow-hidden">
+          {/* Header */}
+          <div className="p-4 bg-secondary text-white flex items-center justify-between shrink-0 border-b-2 border-black">
+            <div className="flex items-center gap-3 mt-2">
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm shadow-inner">
+                <AlertTriangle className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="font-display text-primary font-bold text-lg leading-tight tracking-wide">
+                  Donkey Support
+                </h1>
+                <p className="text-xs text-white/90 font-medium">
+                  Configuration Error
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Error Content */}
+          <div className="flex-1 overflow-hidden relative bg-slate-50">
+            <div className="h-full flex flex-col items-center justify-center p-6 text-center">
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="w-20 h-20 bg-red-100 rounded-3xl flex items-center justify-center mb-6 border border-red-200"
+              >
+                <AlertTriangle className="w-10 h-10 text-red-500" />
+              </motion.div>
+
+              <motion.div
+                initial={{ y: 10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+              >
+                <h2 className="font-display text-primary text-2xl font-bold mb-2">
+                  {errorInfo.title}
+                </h2>
+                <p className="text-slate-600 mb-4 max-w-sm">
+                  {errorInfo.description}
+                </p>
+                {errorInfo.hint && (
+                  <p className="text-sm text-slate-500 bg-slate-100 rounded-xl px-4 py-3 max-w-sm">
+                    💡 {errorInfo.hint}
+                  </p>
+                )}
+              </motion.div>
+
+              <motion.div
+                initial={{ y: 10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="mt-6"
+              >
+                <p className="text-xs text-slate-400 font-mono">
+                  Error code: {errorCode}
+                </p>
+              </motion.div>
+            </div>
+          </div>
+        </div>
   );
 }

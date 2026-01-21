@@ -62,8 +62,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
       },
     });
 
-    // Redirect to the next onboarding step (domains)
-    return redirect('/onboarding/domains');
+    // Redirect to the next onboarding step (connect)
+    return redirect('/onboarding/connect');
   } catch (error) {
     console.error('Error processing checkout success:', error);
     return redirect('/onboarding/subscription?error=processing_failed');

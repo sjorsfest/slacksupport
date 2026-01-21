@@ -82,7 +82,7 @@ CREATE TABLE "widget_configs" (
     "accountId" TEXT NOT NULL,
     "primaryColor" TEXT NOT NULL DEFAULT '#4A154B',
     "accentColor" TEXT NOT NULL DEFAULT '#1264A3',
-    "greetingText" TEXT NOT NULL DEFAULT 'Hi! How can we help you today?',
+    "greetingText" TEXT NOT NULL DEFAULT 'What''s cooking? 🍳',
     "companyName" TEXT,
     "officeHoursStart" TEXT,
     "officeHoursEnd" TEXT,

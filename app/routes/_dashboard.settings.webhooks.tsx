@@ -15,6 +15,14 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Switch } from "~/components/ui/switch";
 import { cn } from "~/lib/utils";
@@ -61,6 +69,8 @@ export default function WebhooksSettings() {
   const [showSecret, setShowSecret] = useState<string | null>(null);
   const [selectedWebhook, setSelectedWebhook] = useState<string | null>(null);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const [confirmAction, setConfirmAction] = useState<'delete' | 'rotate' | null>(null);
+  const [confirmWebhookId, setConfirmWebhookId] = useState<string | null>(null);
 
   const createFetcher = useFetcher();
   const toggleFetcher = useFetcher();
@@ -70,6 +80,9 @@ export default function WebhooksSettings() {
 
   const isCreating = createFetcher.state !== 'idle';
   const loadingDeliveries = deliveriesFetcher.state !== 'idle';
+  const confirmWebhook = confirmWebhookId
+    ? webhooks.find((webhook) => webhook.id === confirmWebhookId) || null
+    : null;
 
   useEffect(() => {
     if (createFetcher.state === 'idle' && createFetcher.data) {
@@ -116,15 +129,36 @@ export default function WebhooksSettings() {
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm('Are you sure you want to delete this webhook?')) return;
     setWebhooks(webhooks.filter((w) => w.id !== id));
     if (selectedWebhook === id) setSelectedWebhook(null);
     deleteFetcher.submit(null, { method: 'DELETE', action: `/api/webhooks/${id}` });
   };
 
   const handleRotateSecret = (id: string) => {
-    if (!confirm('Are you sure? This will invalidate the current secret.')) return;
+    setShowSecret(id);
     rotateFetcher.submit(null, { method: 'POST', action: `/api/webhooks/${id}/rotate-secret` });
+  };
+
+  const openConfirm = (action: 'delete' | 'rotate', id: string) => {
+    setConfirmAction(action);
+    setConfirmWebhookId(id);
+  };
+
+  const closeConfirm = () => {
+    setConfirmAction(null);
+    setConfirmWebhookId(null);
+  };
+
+  const handleConfirm = () => {
+    if (!confirmAction || !confirmWebhookId) return;
+
+    if (confirmAction === 'delete') {
+      handleDelete(confirmWebhookId);
+    } else {
+      handleRotateSecret(confirmWebhookId);
+    }
+
+    closeConfirm();
   };
 
   const loadDeliveries = (webhookId: string) => {
@@ -253,14 +287,16 @@ export default function WebhooksSettings() {
                               variant="ghost"
                               size="sm"
                               className="text-xs text-primary gap-1"
-                              onClick={() => handleRotateSecret(webhook.id)}
+                              onClick={() => openConfirm('rotate', webhook.id)}
                             >
                               <RotateCcw className="w-3 h-3" />
                               Rotate
                             </Button>
                           </div>
                           <code className="text-sm font-mono text-muted-foreground">
-                            {webhook.secret || '••••••••••••••••••••••••'}
+                            {showSecret === webhook.id
+                              ? webhook.secret || 'Rotate to generate a new secret.'
+                              : '••••••••••••••••••••••••'}
                           </code>
                           <p className="text-xs text-muted-foreground mt-2">
                             Use this secret to verify webhook signatures. Check the X-Webhook-Signature header.
@@ -295,7 +331,7 @@ export default function WebhooksSettings() {
                         variant="ghost"
                         size="sm"
                         className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 gap-1.5"
-                        onClick={() => handleDelete(webhook.id)}
+                        onClick={() => openConfirm('delete', webhook.id)}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         Delete
@@ -381,7 +417,7 @@ export default function WebhooksSettings() {
             <pre className="bg-slate-950 text-slate-100 p-4 rounded-xl text-sm overflow-x-auto font-mono border border-slate-800 shadow-inner">
 {`{
   "event": "message.created",
-  "timestamp": "2024-01-15T12:00:00.000Z",
+  "timestamp": "${new Date().toISOString()}",
   "data": {
     "ticketId": "clx...",
     "accountId": "clx...",
@@ -399,6 +435,38 @@ export default function WebhooksSettings() {
           </CardContent>
         </Card>
       </motion.div>
+
+      <Dialog
+        open={confirmAction !== null}
+        onOpenChange={(open) => {
+          if (!open) closeConfirm();
+        }}
+      >
+        <DialogContent className="bg-white border border-border">
+          <DialogHeader>
+            <DialogTitle className="text-primary">
+              {confirmAction === 'delete' ? 'Delete webhook?' : 'Rotate webhook secret?'}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmAction === 'delete'
+                ? 'This removes the endpoint and its delivery history.'
+                : 'This invalidates the current signing secret and generates a new one.'}
+              {confirmWebhook?.url ? ` (${confirmWebhook.url})` : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={closeConfirm}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-secondary hover:bg-secondary/90 text-white"
+              onClick={handleConfirm}
+            >
+              {confirmAction === 'delete' ? 'Delete webhook' : 'Rotate secret'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

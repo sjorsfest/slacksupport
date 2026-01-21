@@ -62,7 +62,7 @@ export function ColorPicker({ value, onChange, label, description, className }: 
                 {/* Preset Colors */}
                 <div className="flex flex-wrap gap-2">
                   {[
-                    "#FF4FA3", "#D0FAA2", "#36c5f0", "#f59e0b", 
+                    "#FF4FA3", "#e6c13b", "#36c5f0", "#f59e0b", 
                     "#10b981", "#8b5cf6", "#ef4444", "#1f2937"
                   ].map((preset) => (
                     <button

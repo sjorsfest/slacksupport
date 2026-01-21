@@ -60,13 +60,9 @@ type Message = {
   discordUserName: string | null;
 };
 
-const statusOptions = ['OPEN', 'PENDING', 'RESOLVED', 'CLOSED'];
-const priorityOptions = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
-
+const statusOptions = ['OPEN', 'CLOSED'];
 const statusColors: Record<string, string> = {
   OPEN: 'bg-sky-100 text-sky-700',
-  PENDING: 'bg-amber-100 text-amber-700',
-  RESOLVED: 'bg-emerald-100 text-emerald-700',
   CLOSED: 'bg-slate-100 text-slate-600',
 };
 
@@ -90,9 +86,9 @@ export default function TicketDetail() {
   };
 
   return (
-    <div className="h-full flex bg-transparent">
+    <div className="h-full flex border border-border rounded-xl">
       {/* Main chat area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col border-r border-border">
         {/* Header */}
         <header className="px-6 py-4 border-b border-border bg-white/80 backdrop-blur flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -102,7 +98,7 @@ export default function TicketDetail() {
               </svg>
             </Link>
             <div>
-              <h1 className="text-lg font-semibold text-slate-900">
+              <h1 className="text-lg font-semibold text-secondary-300">
                 {ticket.visitor.name || ticket.visitor.email || 'Anonymous Visitor'}
               </h1>
               <p className="text-sm text-slate-500">Ticket #{ticket.id.slice(-8)}</p>
@@ -162,7 +158,7 @@ export default function TicketDetail() {
 
         {/* Read-only footer */}
         <div className="px-6 py-4 bg-slate-50 border-t border-border text-center text-sm text-slate-500">
-          This ticket is read-only. Please use Slack to reply to the customer.
+          This ticket is read-only. Please use Discord/Slack to reply to the customer.
         </div>
       </div>
 
@@ -208,17 +204,6 @@ export default function TicketDetail() {
               <Badge className={statusColors[ticket.status] || 'bg-slate-100 text-slate-800'}>
                 {ticket.status.charAt(0) + ticket.status.slice(1).toLowerCase()}
               </Badge>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Priority</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="px-3 py-2 border border-border rounded-lg text-sm text-slate-700 bg-slate-50">
-                {ticket.priority.charAt(0) + ticket.priority.slice(1).toLowerCase()}
-              </div>
             </CardContent>
           </Card>
 

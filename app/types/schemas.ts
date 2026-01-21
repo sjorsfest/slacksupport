@@ -46,8 +46,7 @@ export const createTicketSchema = z.object({
 });
 
 export const updateTicketSchema = z.object({
-  status: z.enum(['OPEN', 'PENDING', 'RESOLVED', 'CLOSED']).optional(),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
+  status: z.enum(['OPEN', 'CLOSED']).optional(),
   subject: z.string().optional(),
   assignedUserId: z.string().cuid().optional().nullable(),
 });
@@ -88,8 +87,7 @@ export const paginationSchema = z.object({
 
 // Ticket filters schema
 export const ticketFiltersSchema = z.object({
-  status: z.enum(['OPEN', 'PENDING', 'RESOLVED', 'CLOSED']).optional(),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
+  status: z.enum(['OPEN', 'CLOSED']).optional(),
   search: z.string().optional(),
 }).merge(paginationSchema);
 

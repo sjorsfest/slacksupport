@@ -52,7 +52,7 @@ export default function ConnectHub() {
           </h1>
         </div>
         <p className="text-muted-foreground text-base lg:text-lg">
-          Connect your team's communication platform to respond to tickets.
+          Connect your team's communication platform to respond to tickets. 🎫 
         </p>
         {hasAnyIntegration && (
           <p className="text-sm text-amber-600 mt-2">

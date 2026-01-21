@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLoaderData, useSearchParams, useFetcher } from 'react-router';
+import { Link, useLoaderData, useSearchParams, useFetcher, useLocation } from 'react-router';
 import type { LoaderFunctionArgs } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Slack as SlackIcon, Hash, Zap, CheckCircle2, XCircle, Link2Off, Send } from 'lucide-react';
@@ -53,6 +53,7 @@ type Channel = { id: string; name: string; isPrivate: boolean };
 export default function SlackIntegration() {
   const { accountId, installation, selectedChannel, baseUrl } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selected, setSelected] = useState(selectedChannel);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -64,6 +65,11 @@ export default function SlackIntegration() {
 
   const success = searchParams.get('success') === 'true';
   const error = searchParams.get('error');
+  const isOnboarding = location.pathname.startsWith('/onboarding');
+  const returnTo = isOnboarding ? location.pathname : null;
+  const installUrl = `${baseUrl}/slack/install?account_id=${accountId}${
+    returnTo ? `&return_to=${encodeURIComponent(returnTo)}` : ''
+  }`;
 
   const loadingChannels = channelsFetcher.state !== 'idle';
   const isSaving = selectFetcher.state !== 'idle';
@@ -180,10 +186,7 @@ export default function SlackIntegration() {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex justify-center">
-              <a
-                href={`${baseUrl}/slack/install?account_id=${accountId}`}
-                className="inline-flex"
-              >
+              <a href={installUrl} className="inline-flex">
                 <Button className="gap-2 bg-secondary hover:bg-secondary/90 text-white">
                   <SlackIcon className="w-5 h-5" />
                   Add to Slack
@@ -327,6 +330,14 @@ export default function SlackIntegration() {
                 )}
               </CardContent>
             </Card>
+          )}
+
+          {isOnboarding && (
+            <div className="pt-2 flex justify-end">
+              <Button asChild className="bg-secondary hover:bg-secondary/90 text-white">
+                <Link to="/onboarding/embed">Embed the widget! 🚀</Link>
+              </Button>
+            </div>
           )}
         </motion.div>
       )}

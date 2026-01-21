@@ -6,5 +6,5 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const params = url.searchParams.toString();
   const suffix = params ? `?${params}` : '';
 
-  return redirect(`/onboarding/domains${suffix}`);
+  return redirect(`/onboarding/connect${suffix}`);
 }

@@ -277,9 +277,96 @@ export async function postToDiscord(
   }
 }
 
+// Status colors for Discord embeds
+const STATUS_COLORS: Record<string, number> = {
+  OPEN: 0x3b82f6, // Blue
+  CLOSED: 0x6b7280, // Gray
+};
+
+/**
+ * Build an embed for a ticket message.
+ */
+function buildTicketEmbed(
+  ticket: {
+    id: string;
+    status?: string;
+    visitorEmail?: string;
+    visitorName?: string;
+    firstMessage: string;
+    metadata?: Record<string, unknown>;
+  },
+  dashboardUrl: string
+) {
+  const status = ticket.status || 'OPEN';
+  const color = STATUS_COLORS[status] || STATUS_COLORS.OPEN;
+
+  const fields: Array<{ name: string; value: string; inline: boolean }> = [];
+
+  if (ticket.visitorName) {
+    fields.push({ name: 'Name', value: ticket.visitorName, inline: true });
+  }
+  if (ticket.visitorEmail) {
+    fields.push({ name: 'Email', value: ticket.visitorEmail, inline: true });
+  }
+  fields.push({ name: 'Status', value: status, inline: true });
+
+  if (ticket.metadata) {
+    for (const [key, value] of Object.entries(ticket.metadata)) {
+      fields.push({ name: key, value: String(value), inline: true });
+    }
+  }
+
+  return {
+    title: '🎫 Support Ticket',
+    description: ticket.firstMessage,
+    color,
+    fields,
+    footer: {
+      text: 'Reply in this thread to respond',
+    },
+    timestamp: new Date().toISOString(),
+  };
+}
+
+/**
+ * Build the status toggle button component.
+ */
+function buildStatusButton(ticketId: string, currentStatus: string = 'OPEN') {
+  const isOpen = currentStatus === 'OPEN';
+
+  return {
+    type: 1, // Action row
+    components: [
+      {
+        type: 2, // Button
+        style: isOpen ? 2 : 3, // Secondary (gray) for close, Success (green) for reopen
+        label: isOpen ? 'Close Ticket' : 'Reopen Ticket',
+        custom_id: `toggle_status:${ticketId}`,
+      },
+    ],
+  };
+}
+
+/**
+ * Build the dashboard link button component.
+ */
+function buildDashboardButton(dashboardUrl: string) {
+  return {
+    type: 1, // Action row
+    components: [
+      {
+        type: 2, // Button
+        style: 5, // Link button
+        label: 'View in Dashboard',
+        url: dashboardUrl,
+      },
+    ],
+  };
+}
+
 /**
  * Create a new ticket thread in Discord.
- * Posts a message and creates a thread from it.
+ * Posts a message with an embed and creates a thread from it.
  */
 export async function createTicketInDiscord(
   accountId: string,
@@ -298,33 +385,19 @@ export async function createTicketInDiscord(
   }
 
   const dashboardUrl = `${BASE_URL}/tickets/${ticket.id}`;
-
-  // Build the ticket message content
-  let content = `**🎫 New Support Ticket**\n\n`;
-  content += `${ticket.firstMessage}\n\n`;
-
-  if (ticket.visitorEmail || ticket.visitorName || ticket.metadata) {
-    content += `───────────────\n`;
-    if (ticket.visitorName) {
-      content += `**Name:** ${ticket.visitorName}\n`;
-    }
-    if (ticket.visitorEmail) {
-      content += `**Email:** ${ticket.visitorEmail}\n`;
-    }
-    if (ticket.metadata) {
-      for (const [key, value] of Object.entries(ticket.metadata)) {
-        content += `**${key}:** ${String(value)}\n`;
-      }
-    }
-  }
-
-  content += `\n[View in Dashboard](${dashboardUrl}) • Reply in this thread to respond`;
+  const embed = buildTicketEmbed({ ...ticket, status: 'OPEN' }, dashboardUrl);
 
   try {
-    // First, post the initial message
+    // Post the initial message with embed and components
     const messageResponse = await discordRequest(`/channels/${channelId}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({
+        embeds: [embed],
+        components: [
+          buildStatusButton(ticket.id, 'OPEN'),
+          buildDashboardButton(dashboardUrl),
+        ],
+      }),
     });
 
     if (!messageResponse.ok) {
@@ -367,6 +440,54 @@ export async function createTicketInDiscord(
   } catch (error) {
     console.error('Failed to create ticket in Discord:', error);
     return null;
+  }
+}
+
+/**
+ * Update a Discord message with new ticket status.
+ */
+export async function updateDiscordMessage(
+  accountId: string,
+  channelId: string,
+  messageId: string,
+  ticket: {
+    id: string;
+    status: string;
+    firstMessage: string;
+    visitorEmail?: string;
+    visitorName?: string;
+    metadata?: Record<string, unknown>;
+  }
+): Promise<boolean> {
+  const installation = await getDiscordInstallation(accountId);
+  if (!installation) {
+    return false;
+  }
+
+  const dashboardUrl = `${BASE_URL}/tickets/${ticket.id}`;
+  const embed = buildTicketEmbed(ticket, dashboardUrl);
+
+  try {
+    const response = await discordRequest(`/channels/${channelId}/messages/${messageId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        embeds: [embed],
+        components: [
+          buildStatusButton(ticket.id, ticket.status),
+          buildDashboardButton(dashboardUrl),
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Failed to update Discord message:', await response.text());
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Failed to update Discord message:', error);
+    return false;
   }
 }
 

@@ -28,7 +28,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   });
 
   if (subscription && ['active', 'trialing'].includes(subscription.status)) {
-    return redirect('/onboarding/domains');
+    return redirect('/onboarding/connect');
   }
 
   // Fetch the product with all its prices
@@ -151,13 +151,6 @@ export default function OnboardingSubscription() {
         <p className="text-slate-600 mt-2">
           Select a subscription plan to get started with your support widget.
         </p>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
-        <Badge className="bg-primary text-primary-foreground">0 · Plan</Badge>
-        <Badge variant="muted" className="rounded-full px-4 py-1">1 · Domains</Badge>
-        <Badge variant="muted" className="rounded-full px-4 py-1">2 · Connect</Badge>
-        <Badge variant="muted" className="rounded-full px-4 py-1">3 · Embed</Badge>
       </div>
 
       {canceled && (

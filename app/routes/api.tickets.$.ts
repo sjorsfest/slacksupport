@@ -28,7 +28,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     const where = {
       accountId: user.accountId,
       ...(filters.status && { status: filters.status }),
-      ...(filters.priority && { priority: filters.priority }),
       ...(filters.search && {
         OR: [
           { subject: { contains: filters.search, mode: 'insensitive' as const } },
@@ -59,7 +58,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       tickets: tickets.map(t => ({
         id: t.id,
         status: t.status,
-        priority: t.priority,
         subject: t.subject,
         visitor: t.visitor,
         lastMessage: t.messages[0] || null,
@@ -476,7 +474,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
           ticketId,
           accountId: user.accountId,
           status: updated.status,
-          priority: updated.priority,
         }
       );
 

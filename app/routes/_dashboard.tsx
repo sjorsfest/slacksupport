@@ -143,7 +143,7 @@ export default function DashboardLayout() {
   return (
     <>
     <SupportWidget
-      accountId="cmkmutu7o0000zalwjxgvg6jz"
+      accountId="cmknxg4po0000u8lw46b71lo9"
       baseUrl="http://localhost:5173"
       email={user.email}
       name={user.name || undefined}

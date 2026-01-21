@@ -11,6 +11,7 @@ import {
   Check,
   FileCode,
   Atom,
+  AlertTriangle,
 } from "lucide-react";
 
 import { requireUser } from "~/lib/auth.server";
@@ -52,10 +53,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
     accountId: user.accountId,
     allowedDomains: account?.allowedDomains || [],
     config: widgetConfig || {
-      primaryColor: "#D0FAA2",
-      accentColor: "#FF4FA3",
-      greetingText: "Hi! How can we help you today?",
-      companyName: "donkey support",
+      primaryColor: "#FF4FA3",
+      accentColor: "#e6c13b",
+      greetingText: "What's cooking? 🍳",
+      companyName: "Donkey Support",
       controlledByHost: false,
     },
     baseUrl,
@@ -490,14 +491,25 @@ function App() {
                       </motion.div>
                     ))
                   ) : (
-                    <motion.p
+                    <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="text-sm text-muted-foreground italic flex items-center gap-2"
+                      className="w-full border border-amber-200 bg-amber-50 rounded-xl p-4"
                     >
-                      <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
-                      No domains restricted. Widget works everywhere.
-                    </motion.p>
+                      <div className="flex gap-3">
+                        <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-amber-800">
+                            No domain restrictions
+                          </p>
+                          <p className="text-sm text-amber-700 mt-1">
+                            Anyone can embed your widget on their website and
+                            send messages to your Slack/Discord. Add your
+                            domain(s) above to restrict access.
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
                   )}
                 </AnimatePresence>
               </div>

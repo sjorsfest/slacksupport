@@ -176,9 +176,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     const newSecret = await rotateWebhookSecret(webhookId);
 
-    return Response.json({ secret: newSecret });
+    return Response.json({ secret: newSecret, id: webhookId });
   }
 
   return Response.json({ error: 'Not found' }, { status: 404 });
 }
-
