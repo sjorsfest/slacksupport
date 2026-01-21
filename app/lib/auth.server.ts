@@ -27,7 +27,7 @@ export const auth = betterAuth({
       enabled: true,
       trustedProviders: ["google", "twitter", "email-password"],
     },
-    trustedOrigins: ["http://localhost:5173", "https://donkey.support", "https://*.ngrok-free.dev"],
+    trustedOrigins: ["http://localhost:5173", "https://app.donkey.support"],
   },
   baseURL: process.env.BASE_URL,
   emailAndPassword: {
