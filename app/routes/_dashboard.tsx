@@ -17,7 +17,6 @@ import {
   LogOut,
   Slack,
   CreditCard,
-  ChevronDown,
 } from "lucide-react";
 import { FaDiscord } from "react-icons/fa";
 
@@ -112,7 +111,6 @@ export default function DashboardLayout() {
   const hasActiveSubscription = !!subscription && ['active', 'trialing'].includes(subscription.status);
   const [lockedTooltipPath, setLockedTooltipPath] = useState<string | null>(null);
   const [supportEnabled, setSupportEnabled] = useState(false);
-  const [isMobileUserMenuOpen, setIsMobileUserMenuOpen] = useState(false);
   const handleLockedNavigation = (path: string | null) => {
     setLockedTooltipPath(path);
   };
@@ -152,9 +150,9 @@ export default function DashboardLayout() {
       controlledByHost={true}
       widgetIsOpen={supportEnabled}
     />
-    <div className="h-[100dvh] flex flex-col lg:flex-row bg-background font-sans overflow-hidden">
-      {/* Fun Sidebar - Desktop Only */}
-      <aside className="hidden lg:flex w-72 m-4 rounded-3xl bg-card border-2 border-black flex-col overflow-hidden transition-all duration-300 h-[calc(100vh-2rem)] flex-shrink-0" style={{ boxShadow: '4px 4px 0px 0px #1a1a1a' }}>
+    <div className="h-[100dvh] flex flex-row bg-background font-sans overflow-hidden">
+      {/* Sidebar */}
+      <aside className="flex w-72 m-4 rounded-3xl bg-card border-2 border-black flex-col overflow-hidden transition-all duration-300 h-[calc(100vh-2rem)] flex-shrink-0" style={{ boxShadow: '4px 4px 0px 0px #1a1a1a' }}>
         {/* Header */}
         <div className="p-6 border-b border-border/50">
           <div className="flex items-center space-x-[-1rem]">
@@ -322,139 +320,14 @@ export default function DashboardLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 m-0 lg:m-4 lg:ml-0 rounded-none lg:rounded-3xl bg-white/90 border-x-0 lg:border-2 lg:border-black backdrop-blur-sm lg:overflow-hidden flex flex-col relative lg:[box-shadow:4px_4px_0px_0px_#1a1a1a] min-h-0 h-full overflow-hidden">
-        {/* Mobile Header */}
-        <div className="lg:hidden p-4 border-b border-border/50 bg-white/80 backdrop-blur-md flex-shrink-0 z-20 flex items-center justify-between relative">
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <img
-                src="/static/donkey.png"
-                alt="Donkey Support"
-                className="w-10 h-10 object-contain"
-              />
-              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white animate-bounce-subtle" />
-            </div>
-            <h1 className="font-display text-lg font-bold text-primary">
-              Donkey Support
-            </h1>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              className="flex items-center gap-1 rounded-full px-1 py-0.5 hover:bg-muted/60 transition-colors"
-              aria-haspopup="menu"
-              aria-expanded={isMobileUserMenuOpen}
-              aria-label="Open account menu"
-              onClick={() => setIsMobileUserMenuOpen((open) => !open)}
-            >
-              <Avatar className="h-8 w-8 border border-white shadow-sm">
-                <AvatarFallback className="bg-gradient-to-br from-secondary to-orange-400 text-white text-xs font-bold">
-                  {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </div>
-          {isMobileUserMenuOpen ? (
-            <>
-              <button
-                type="button"
-                aria-label="Close account menu"
-                className="fixed inset-0 z-30 cursor-default"
-                onClick={() => setIsMobileUserMenuOpen(false)}
-              />
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.15 }}
-                className="absolute right-4 top-[4.25rem] z-40 w-56 rounded-2xl border border-border bg-white shadow-lg"
-                role="menu"
-                aria-label="Account"
-              >
-                <div className="px-4 py-3 border-b border-border/70">
-                  <div className="text-xs text-muted-foreground">Signed in as</div>
-                  <div className="text-sm font-semibold text-foreground truncate">
-                    {user.name || "Support Hero"}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {user.email}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="w-full flex items-center gap-2 px-4 py-3 text-sm font-semibold text-destructive hover:bg-destructive/10 transition-colors"
-                  role="menuitem"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="h-4 w-4" />
-                  Sign out
-                </button>
-              </motion.div>
-            </>
-          ) : null}
-        </div>
-
+      <main className="flex-1 my-4 mr-4 rounded-3xl bg-white/90 border-2 border-black backdrop-blur-sm overflow-hidden flex flex-col relative [box-shadow:4px_4px_0px_0px_#1a1a1a]">
         {/* Decorative background elements */}
         <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
 
-        <div className="flex-1 overflow-y-auto overscroll-y-contain ios-scroll p-4 pb-24 lg:p-6 lg:pb-6 relative" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="flex-1 overflow-y-auto p-6 relative">
           <Outlet />
         </div>
       </main>
-
-      {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-border shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] z-50 pb-safe pointer-events-none">
-        <div className="flex items-center justify-around p-2 pointer-events-auto">
-          {navItems.map((item) => {
-            const isActive = location.pathname.startsWith(item.path);
-            const content = (
-              <>
-                <div
-                  className={cn(
-                    "p-1.5 rounded-lg transition-colors",
-                    isActive ? "bg-primary/10" : "bg-transparent"
-                  )}
-                >
-                  <item.icon
-                    className={cn(
-                      "w-6 h-6",
-                      isActive ? "text-primary" : item.color
-                    )}
-                  />
-                </div>
-                <span className="text-[10px] font-medium">{item.label}</span>
-              </>
-            );
-
-            return item.external ? (
-              <button
-                key={item.path}
-                type="button"
-                onClick={handleBillingClick}
-                className={cn(
-                  "cursor-pointer flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 min-w-[4rem]",
-                  "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {content}
-              </button>
-            ) : (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  "flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 min-w-[4rem]",
-                  isActive
-                    ? "text-primary-700"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {content}
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
     </div>
 
     </>

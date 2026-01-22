@@ -190,30 +190,6 @@ body {
   background-attachment: fixed;
 }
 
-.ios-scroll {
-  -webkit-overflow-scrolling: touch;
-  overflow-y: scroll;
-  overflow-x: hidden;
-  touch-action: manipulation;
-}
-
-/* iOS Safari specific fix for scroll containers */
-@supports (-webkit-touch-callout: none) {
-  .ios-scroll {
-    height: 100%;
-    flex: 1 1 0%;
-  }
-}
-
-.touch-pan-y {
-  touch-action: pan-y;
-}
-
-@supports (-webkit-touch-callout: none) {
-  body {
-    background-attachment: scroll;
-  }
-}
 
 .font-display {
   font-family: var(--font-display);
