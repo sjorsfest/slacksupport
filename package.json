@@ -8,6 +8,7 @@
     "expose": "ngrok http 5173",
     "start": "react-router-serve ./build/server/index.js",
     "start:custom": "node --import tsx server.ts",
+    "start:prod": "prisma migrate deploy && node --import tsx server.ts",
     "typecheck": "react-router typegen && tsc",
     "test": "vitest",
     "test:run": "vitest run",

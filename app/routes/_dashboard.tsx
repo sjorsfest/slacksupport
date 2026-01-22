@@ -115,6 +115,8 @@ export default function DashboardLayout() {
     setLockedTooltipPath(path);
   };
 
+  console.log(supportAccountId)
+
   const handleLogout = async () => {
     await authClient.signOut({
       fetchOptions: {
