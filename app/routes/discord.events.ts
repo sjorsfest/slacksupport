@@ -152,11 +152,14 @@ export async function action({ request }: ActionFunctionArgs) {
       });
 
       // Update the Discord message
-      const channelId = interaction.channel_id;
-      const messageId = interaction.message?.id;
+      // Use ticket's stored channel ID, not interaction.channel_id
+      // For thread-starter messages, interaction.channel_id returns the thread ID,
+      // but the message is in the parent channel stored on the ticket
+      const channelId = ticket.discordChannelId;
+      const messageId = ticket.discordMessageId || interaction.message?.id;
 
       if (channelId && messageId) {
-        await updateDiscordMessage(installation.accountId, channelId, messageId, {
+        const success = await updateDiscordMessage(installation.accountId, channelId, messageId, {
           id: updatedTicket.id,
           status: updatedTicket.status,
           firstMessage: updatedTicket.messages[0]?.text || 'No message',
@@ -164,6 +167,11 @@ export async function action({ request }: ActionFunctionArgs) {
           visitorName: updatedTicket.visitor.name || undefined,
           metadata: updatedTicket.visitor.metadata as Record<string, unknown>,
         });
+        if (!success) {
+          console.error('Failed to update Discord message for ticket:', ticketId);
+        }
+      } else {
+        console.warn('Missing channel or message ID for ticket:', ticketId, { channelId, messageId });
       }
 
       // Respond with update acknowledgement (type 6 = deferred update, no visible response)
