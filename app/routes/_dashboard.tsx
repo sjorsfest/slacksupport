@@ -320,7 +320,7 @@ export default function DashboardLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 m-0 lg:m-4 lg:ml-0 rounded-none lg:rounded-3xl bg-white/90 border-x-0 lg:border-2 lg:border-black backdrop-blur-sm overflow-hidden flex flex-col relative pb-20 lg:pb-0 lg:[box-shadow:4px_4px_0px_0px_#1a1a1a]">
+      <main className="flex-1 m-0 lg:m-4 lg:ml-0 rounded-none lg:rounded-3xl bg-white/90 border-x-0 lg:border-2 lg:border-black backdrop-blur-sm overflow-hidden flex flex-col relative lg:[box-shadow:4px_4px_0px_0px_#1a1a1a]">
         {/* Mobile Header */}
         <div className="lg:hidden p-4 border-b border-border/50 bg-white/80 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -349,7 +349,7 @@ export default function DashboardLayout() {
         {/* Decorative background elements */}
         <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
 
-        <div className="flex-1 overflow-auto p-4 lg:p-6 relative z-10">
+        <div className="flex-1 overflow-auto p-4 pb-24 lg:p-6 lg:pb-6 relative z-10">
           <Outlet />
         </div>
       </main>

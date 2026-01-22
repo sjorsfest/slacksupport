@@ -235,11 +235,8 @@ export default function WidgetFrame() {
         messageId?: string;
       };
 
-      if (result.ticketId && !ticketId) {
-        setTicketId(result.ticketId);
-      }
-
       if (result.messageId) {
+        // Update the pending message with the real ID first
         setMessages((prev) => {
           const lastPendingIndex = [...prev]
             .reverse()
@@ -247,15 +244,23 @@ export default function WidgetFrame() {
           if (lastPendingIndex !== -1) {
             const realIndex = prev.length - 1 - lastPendingIndex;
             const newMsgs = [...prev];
-            newMsgs[realIndex] = {
+            const confirmedMessage = {
               ...newMsgs[realIndex],
               id: result.messageId!,
               pending: false,
             };
+            newMsgs[realIndex] = confirmedMessage;
+            // Update lastMessageTimeRef to prevent polling from fetching this message again
+            lastMessageTimeRef.current = confirmedMessage.createdAt;
             return newMsgs;
           }
           return prev;
         });
+      }
+
+      // Set ticketId after updating the message to ensure lastMessageTimeRef is set before polling starts
+      if (result.ticketId && !ticketId) {
+        setTicketId(result.ticketId);
       }
     }
   }, [messageFetcher.data, ticketId]);

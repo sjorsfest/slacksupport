@@ -113,7 +113,7 @@ export default function TicketsIndex() {
   const totalTickets = Object.values(counts).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="p-4 lg:p-8 max-w-6xl mx-auto pb-24 lg:pb-8">
+    <div className="max-w-6xl mx-auto">
       <div className="mb-6 lg:mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl lg:text-4xl font-bold text-secondary-300 mb-2">
