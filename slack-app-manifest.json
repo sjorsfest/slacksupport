@@ -1,19 +1,19 @@
 {
   "display_information": {
-    "name": "Support Widget",
-    "description": "Customer support tickets delivered to your Slack workspace",
-    "background_color": "#4A154B",
-    "long_description": "Support Widget connects your website's support chat to Slack. \nWhen visitors send messages through your website widget, tickets are \ncreated as Slack threads. Your team can respond directly from Slack, \nand messages sync in real-time back to the visitor.\n"
+    "name": "Donkey Support",
+    "description": "Customer support tickets delivered straight to your Slack workspace",
+    "background_color": "#7C3AED",
+    "long_description": "Donkey Support connects your website's chat widget to Slack. When visitors send messages through your website, support tickets are automatically created as Slack threads. Your team can respond directly from Slack, and messages sync in real-time back to the visitor. Close and reopen tickets with a single click, right from Slack."
   },
   "features": {
     "bot_user": {
-      "display_name": "Support Widget",
+      "display_name": "Donkey Support",
       "always_online": true
     }
   },
   "oauth_config": {
     "redirect_urls": [
-      "https://YOUR_DOMAIN/slack/oauth/callback"
+      "https://app.donkey.support/slack/oauth/callback"
     ],
     "scopes": {
       "bot": [
@@ -23,13 +23,14 @@
         "chat:write",
         "users:read",
         "groups:history",
-        "groups:read"
+        "groups:read",
+        "groups:write"
       ]
     }
   },
   "settings": {
     "event_subscriptions": {
-      "request_url": "https://YOUR_DOMAIN/slack/events",
+      "request_url": "https://app.donkey.support/slack/events",
       "bot_events": [
         "message.channels",
         "message.groups"
@@ -37,7 +38,7 @@
     },
     "interactivity": {
       "is_enabled": true,
-      "request_url": "https://YOUR_DOMAIN/slack/interactive"
+      "request_url": "https://app.donkey.support/slack/interactive"
     },
     "org_deploy_enabled": false,
     "socket_mode_enabled": false,
