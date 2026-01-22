@@ -1,4 +1,6 @@
 import { Resend } from "resend";
+import fs from "node:fs";
+import path from "node:path";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -14,11 +16,21 @@ export async function sendVerificationEmail({
   url,
 }: SendVerificationEmailParams) {
   const firstName = name?.split(" ")[0] || "there";
-  const baseUrl = process.env.BASE_URL || process.env.BETTER_AUTH_URL || "";
-  const donkeyImageUrl = `${baseUrl}/static/donkey.png`;
+  const donkeyImagePath = path.join(process.cwd(), "public", "static", "donkey.png");
+  const donkeyImageContent = fs.readFileSync(donkeyImagePath).toString("base64");
+  const donkeySupportLogoPath = path.join(
+    process.cwd(),
+    "public",
+    "static",
+    "donkey-support.png"
+  );
+  const donkeySupportLogoContent = fs
+    .readFileSync(donkeySupportLogoPath)
+    .toString("base64");
+  const domain = process.env.NODE_ENV === "production" ? "resend.com" : "resend.dev";
 
   const res = await resend.emails.send({
-    from: "Donkey Support <onboarding@resend.dev>",
+    from: `Donkey Support <onboarding@${domain}>`,
     to: email,
     subject: "Verify your email - Donkey Support",
     html: `
@@ -28,6 +40,9 @@ export async function sendVerificationEmail({
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@400;600;700&display=swap');
+          </style>
         </head>
         <body style="margin: 0; padding: 0; font-family: 'Nunito', 'Segoe UI', sans-serif; background-color: #ffd641;">
           <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #ffd641; padding: 40px 20px;">
@@ -40,12 +55,10 @@ export async function sendVerificationEmail({
                       <table cellpadding="0" cellspacing="0" style="margin: 0 auto;">
                         <tr>
                           <td style="vertical-align: middle; padding-right: 8px;">
-                            <img src="${donkeyImageUrl}" alt="Donkey" width="56" height="56" style="display: block; width: 56px; height: 56px; object-fit: contain;" />
+                            <img src="cid:donkey-logo" alt="Donkey" width="56" height="56" style="display: block; width: 56px; height: 56px; object-fit: contain;" />
                           </td>
                           <td style="vertical-align: middle;">
-                            <h1 style="margin: 0; font-family: 'Fredoka', 'Nunito', sans-serif; font-size: 32px; font-weight: 700; color: #ffd641; text-shadow: -1.5px -1.5px 0 #1a1a1a, 1.5px -1.5px 0 #1a1a1a, -1.5px 1.5px 0 #1a1a1a, 1.5px 1.5px 0 #1a1a1a; line-height: 1;">
-                              Donkey<br>Support
-                            </h1>
+                            <img src="cid:donkey-support-logo" alt="Donkey Support" width="220" style="display: block; width: 220px; height: auto;" />
                           </td>
                         </tr>
                       </table>
@@ -99,6 +112,20 @@ export async function sendVerificationEmail({
         </body>
       </html>
     `,
+    attachments: [
+      {
+        content: donkeyImageContent,
+        filename: "donkey.png",
+        contentId: "donkey-logo",
+        contentType: "image/png",
+      },
+      {
+        content: donkeySupportLogoContent,
+        filename: "donkey-support.png",
+        contentId: "donkey-support-logo",
+        contentType: "image/png",
+      },
+    ],
   });
   const { error } = res;
   if (error) {
