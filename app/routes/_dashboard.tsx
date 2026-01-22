@@ -17,6 +17,7 @@ import {
   LogOut,
   Slack,
   CreditCard,
+  ChevronDown,
 } from "lucide-react";
 import { FaDiscord } from "react-icons/fa";
 
@@ -111,6 +112,7 @@ export default function DashboardLayout() {
   const hasActiveSubscription = !!subscription && ['active', 'trialing'].includes(subscription.status);
   const [lockedTooltipPath, setLockedTooltipPath] = useState<string | null>(null);
   const [supportEnabled, setSupportEnabled] = useState(false);
+  const [isMobileUserMenuOpen, setIsMobileUserMenuOpen] = useState(false);
   const handleLockedNavigation = (path: string | null) => {
     setLockedTooltipPath(path);
   };
@@ -322,7 +324,7 @@ export default function DashboardLayout() {
       {/* Main Content Area */}
       <main className="flex-1 m-0 lg:m-4 lg:ml-0 rounded-none lg:rounded-3xl bg-white/90 border-x-0 lg:border-2 lg:border-black backdrop-blur-sm overflow-hidden flex flex-col relative lg:[box-shadow:4px_4px_0px_0px_#1a1a1a]">
         {/* Mobile Header */}
-        <div className="lg:hidden p-4 border-b border-border/50 bg-white/80 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between">
+        <div className="lg:hidden p-4 border-b border-border/50 bg-white/80 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between relative">
           <div className="flex items-center gap-2">
             <div className="relative">
               <img
@@ -336,14 +338,60 @@ export default function DashboardLayout() {
               Donkey Support
             </h1>
           </div>
-          <Avatar
-            className="h-8 w-8 border border-white shadow-sm"
-            onClick={handleLogout}
-          >
-            <AvatarFallback className="bg-gradient-to-br from-secondary to-orange-400 text-white text-xs font-bold">
-              {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="flex items-center gap-1 rounded-full px-1 py-0.5 hover:bg-muted/60 transition-colors"
+              aria-haspopup="menu"
+              aria-expanded={isMobileUserMenuOpen}
+              aria-label="Open account menu"
+              onClick={() => setIsMobileUserMenuOpen((open) => !open)}
+            >
+              <Avatar className="h-8 w-8 border border-white shadow-sm">
+                <AvatarFallback className="bg-gradient-to-br from-secondary to-orange-400 text-white text-xs font-bold">
+                  {user.name?.[0]?.toUpperCase() || user.email[0].toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </div>
+          {isMobileUserMenuOpen ? (
+            <>
+              <button
+                type="button"
+                aria-label="Close account menu"
+                className="fixed inset-0 z-30 cursor-default"
+                onClick={() => setIsMobileUserMenuOpen(false)}
+              />
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.15 }}
+                className="absolute right-4 top-[4.25rem] z-40 w-56 rounded-2xl border border-border bg-white shadow-lg"
+                role="menu"
+                aria-label="Account"
+              >
+                <div className="px-4 py-3 border-b border-border/70">
+                  <div className="text-xs text-muted-foreground">Signed in as</div>
+                  <div className="text-sm font-semibold text-foreground truncate">
+                    {user.name || "Support Hero"}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {user.email}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-2 px-4 py-3 text-sm font-semibold text-destructive hover:bg-destructive/10 transition-colors"
+                  role="menuitem"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </button>
+              </motion.div>
+            </>
+          ) : null}
         </div>
 
         {/* Decorative background elements */}
