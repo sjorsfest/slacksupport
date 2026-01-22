@@ -540,3 +540,35 @@ export type DiscordGatewayEvent = {
   op: number; // Opcode
   d: DiscordMessageEvent | unknown; // Event data
 };
+
+/**
+ * Archive or unarchive a Discord thread.
+ * @param threadId - The thread ID to modify
+ * @param archived - true to archive, false to unarchive
+ */
+export async function setDiscordThreadArchived(
+  threadId: string,
+  archived: boolean
+): Promise<boolean> {
+  try {
+    const response = await discordRequest(`/channels/${threadId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        archived,
+        // When unarchiving, also unlock the thread so people can send messages
+        locked: archived,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Failed to ${archived ? 'archive' : 'unarchive'} Discord thread:`, errorText);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error(`Failed to ${archived ? 'archive' : 'unarchive'} Discord thread:`, error);
+    return false;
+  }
+}

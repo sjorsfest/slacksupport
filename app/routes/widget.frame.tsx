@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import type { LoaderFunctionArgs, LinksFunction } from "react-router";
 import { useLoaderData, useFetcher } from "react-router";
 import { motion } from "framer-motion";
-import { Send, X, Sparkles, PartyPopper, AlertTriangle } from "lucide-react";
+import { Send, X, Sparkles, PartyPopper, AlertTriangle, CheckCircle2, RefreshCw, Plus } from "lucide-react";
 import { isRouteErrorResponse, useRouteError } from "react-router";
 
 import { prisma } from "~/lib/db.server";
@@ -106,9 +106,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       },
       include: {
         tickets: {
-          where: {
-            status: "OPEN",
-          },
+          // Get the most recent ticket (open or closed)
           orderBy: { createdAt: "desc" },
           take: 1,
           include: {
@@ -138,6 +136,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     existingTicket: existingTicket
       ? {
           id: existingTicket.id,
+          status: existingTicket.status,
           messages: existingTicket.messages.map((m) => ({
             id: m.id,
             source: m.source,
@@ -168,6 +167,9 @@ export default function WidgetFrame() {
   );
   const [ticketId, setTicketId] = useState<string | null>(
     data.existingTicket?.id || null
+  );
+  const [ticketStatus, setTicketStatus] = useState<"OPEN" | "CLOSED">(
+    (data.existingTicket?.status as "OPEN" | "CLOSED") || "OPEN"
   );
   const [inputValue, setInputValue] = useState("");
   const [isIdle, setIsIdle] = useState(false);
@@ -282,8 +284,22 @@ export default function WidgetFrame() {
           return;
         }
 
-        const data = await response.json();
-        const newMessages = data.messages || [];
+        const pollData = await response.json();
+        const newMessages = pollData.messages || [];
+
+        // Check if ticket status changed
+        if (pollData.ticketStatus && pollData.ticketStatus !== ticketStatus) {
+          setTicketStatus(pollData.ticketStatus);
+          // If ticket was closed, stop polling
+          if (pollData.ticketStatus === "CLOSED") {
+            isPollingRef.current = false;
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = null;
+            }
+            return;
+          }
+        }
 
         if (newMessages.length > 0) {
           lastMessageTimeRef.current =
@@ -310,7 +326,7 @@ export default function WidgetFrame() {
 
     // Set up interval
     pollingIntervalRef.current = setInterval(poll, POLLING_INTERVAL_MS);
-  }, [ticketId, resetIdleTimeout]);
+  }, [ticketId, ticketStatus, resetIdleTimeout]);
 
   // Start/stop polling when ticketId changes
   useEffect(() => {
@@ -346,6 +362,40 @@ export default function WidgetFrame() {
 
   const handleClose = () => {
     window.parent.postMessage({ type: "sw:close" }, "*");
+  };
+
+  const handleReopenTicket = async () => {
+    if (!ticketId) return;
+
+    try {
+      const response = await fetch(`/api/tickets/${ticketId}/reopen`, {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        setTicketStatus("OPEN");
+        // Restart polling
+        isPollingRef.current = false;
+        setTimeout(() => startPolling(), 0);
+      } else {
+        console.error("Failed to reopen ticket");
+      }
+    } catch (error) {
+      console.error("Error reopening ticket:", error);
+    }
+  };
+
+  const handleStartNewTicket = () => {
+    // Reset all state to start fresh
+    setTicketId(null);
+    setTicketStatus("OPEN");
+    setMessages([]);
+    lastMessageTimeRef.current = null;
+    isPollingRef.current = false;
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
   };
 
   const handleInfoSubmit = (e: React.FormEvent) => {
@@ -665,7 +715,34 @@ export default function WidgetFrame() {
 
                 {/* Input Area */}
                 <div className="p-4 bg-white border-t border-black">
-                  {isIdle ? (
+                  {ticketStatus === "CLOSED" ? (
+                    <div className="text-center">
+                      <div className="flex items-center justify-center gap-2 mb-3">
+                        <CheckCircle2 className="w-5 h-5 text-green-500" />
+                        <p className="text-sm text-slate-600 font-medium">
+                          This conversation has been closed
+                        </p>
+                      </div>
+                      <div className="flex gap-2 justify-center">
+                        <Button
+                          onClick={handleReopenTicket}
+                          variant="outline"
+                          className="rounded-full border-slate-300 hover:bg-slate-50 gap-2"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                          Reopen
+                        </Button>
+                        <Button
+                          onClick={handleStartNewTicket}
+                          className="rounded-full gap-2 text-white border-0"
+                          style={{ backgroundColor: data.config.accentColor }}
+                        >
+                          <Plus className="w-4 h-4" />
+                          New Conversation
+                        </Button>
+                      </div>
+                    </div>
+                  ) : isIdle ? (
                     <div className="text-center">
                       <p className="text-sm text-slate-500 mb-3">
                         Chat paused due to inactivity

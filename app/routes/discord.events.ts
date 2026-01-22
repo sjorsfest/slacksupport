@@ -6,7 +6,7 @@ import { isServerless, getDeploymentEnvironment } from '~/lib/env.server';
 import { processDiscordEvent, type DiscordEventPayload } from '~/lib/discord-processor.server';
 import { settings } from '~/lib/settings.server';
 import { prisma } from '~/lib/db.server';
-import { updateDiscordMessage } from '~/lib/discord.server';
+import { updateDiscordMessage, setDiscordThreadArchived } from '~/lib/discord.server';
 
 /**
  * Verify Discord interaction signature using Ed25519.
@@ -176,6 +176,15 @@ export async function action({ request }: ActionFunctionArgs) {
         }
       } else {
         console.warn('Missing channel or message ID for ticket:', ticketId, { channelId, messageId });
+      }
+
+      // Archive or unarchive the Discord thread based on new status
+      if (ticket.discordThreadId) {
+        const shouldArchive = newStatus === TicketStatus.CLOSED;
+        const archiveSuccess = await setDiscordThreadArchived(ticket.discordThreadId, shouldArchive);
+        if (!archiveSuccess) {
+          console.error(`Failed to ${shouldArchive ? 'archive' : 'unarchive'} Discord thread for ticket:`, ticketId);
+        }
       }
 
       // Respond with update acknowledgement (type 6 = deferred update, no visible response)

@@ -332,6 +332,88 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
   }
 
+  // Reopen ticket (from widget)
+  const reopenMatch = path.match(/^([^/]+)\/reopen$/);
+  if (reopenMatch && request.method === 'POST') {
+    const ticketId = reopenMatch[1];
+
+    try {
+      // Get ticket
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+        include: {
+          messages: { orderBy: { createdAt: 'asc' }, take: 1 },
+          visitor: true,
+        },
+      });
+
+      if (!ticket) {
+        return Response.json({ error: 'Ticket not found' }, { status: 404 });
+      }
+
+      // Update ticket status to OPEN
+      const updatedTicket = await prisma.ticket.update({
+        where: { id: ticketId },
+        data: { status: 'OPEN' },
+      });
+
+      // Unarchive Discord thread if exists
+      if (ticket.discordThreadId) {
+        const { setDiscordThreadArchived } = await import('~/lib/discord.server');
+        await setDiscordThreadArchived(ticket.discordThreadId, false);
+      }
+
+      // Update Discord message to show OPEN status
+      if (ticket.discordChannelId && ticket.discordMessageId) {
+        const { updateDiscordMessage } = await import('~/lib/discord.server');
+        await updateDiscordMessage(ticket.accountId, ticket.discordChannelId, ticket.discordMessageId, {
+          id: updatedTicket.id,
+          status: updatedTicket.status,
+          firstMessage: ticket.messages[0]?.text || 'No message',
+          visitorEmail: ticket.visitor.email || undefined,
+          visitorName: ticket.visitor.name || undefined,
+          metadata: ticket.visitor.metadata as Record<string, unknown>,
+        });
+      }
+
+      // Update Slack message and post status change to thread
+      if (ticket.slackChannelId && ticket.slackRootMessageTs) {
+        const { updateSlackMessage, postStatusChangeToSlackThread } = await import('~/lib/slack.server');
+        await updateSlackMessage(ticket.accountId, ticket.slackChannelId, ticket.slackRootMessageTs, {
+          id: updatedTicket.id,
+          status: updatedTicket.status,
+          firstMessage: ticket.messages[0]?.text || 'No message',
+          visitorEmail: ticket.visitor.email || undefined,
+          visitorName: ticket.visitor.name || undefined,
+          metadata: ticket.visitor.metadata as Record<string, unknown>,
+        });
+        await postStatusChangeToSlackThread(
+          ticket.accountId,
+          ticket.slackChannelId,
+          ticket.slackThreadTs || ticket.slackRootMessageTs,
+          updatedTicket.status
+        );
+      }
+
+      // Trigger webhook
+      await triggerWebhooks(
+        ticket.accountId,
+        ticketId,
+        'ticket.updated',
+        {
+          ticketId,
+          accountId: ticket.accountId,
+          status: 'OPEN',
+        }
+      );
+
+      return Response.json({ success: true, ticket: updatedTicket });
+    } catch (error) {
+      console.error('Reopen ticket error:', error);
+      return Response.json({ error: 'Failed to reopen ticket' }, { status: 500 });
+    }
+  }
+
   // Send message to ticket
   const messageMatch = path.match(/^([^/]+)\/messages$/);
   if (messageMatch && request.method === 'POST') {

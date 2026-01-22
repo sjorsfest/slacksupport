@@ -205,6 +205,121 @@ export async function postToSlack(
 }
 
 /**
+ * Build Slack blocks for a ticket message.
+ */
+function buildTicketBlocks(
+  ticket: {
+    id: string;
+    status?: TicketStatus;
+    visitorEmail?: string;
+    visitorName?: string;
+    firstMessage: string;
+    metadata?: Record<string, unknown>;
+  },
+  dashboardUrl: string,
+  includeButton: boolean = true
+) {
+  const status = ticket.status || TicketStatus.OPEN;
+  const isOpen = status === TicketStatus.OPEN;
+  const statusEmoji = isOpen ? '🟢' : '⚫';
+  const statusText = isOpen ? 'Open' : 'Closed';
+
+  // Build info fields in a nice table format
+  const infoLines: string[] = [];
+  if (ticket.visitorName) {
+    infoLines.push(`👤  *${ticket.visitorName}*`);
+  }
+  if (ticket.visitorEmail) {
+    infoLines.push(`✉️  ${ticket.visitorEmail}`);
+  }
+  if (ticket.metadata) {
+    for (const [key, value] of Object.entries(ticket.metadata)) {
+      infoLines.push(`📋  *${key}:* ${String(value)}`);
+    }
+  }
+
+  const blocks: unknown[] = [
+    // Header with status indicator
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `*🎫 Support Ticket*\n${statusEmoji} ${statusText}`,
+      },
+    },
+    // Message content in a quote-style block
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `>${ticket.firstMessage.split('\n').join('\n>')}`,
+      },
+    },
+  ];
+
+  // Add visitor info if available
+  if (infoLines.length > 0) {
+    blocks.push({
+      type: 'context',
+      elements: [
+        {
+          type: 'mrkdwn',
+          text: infoLines.join('  •  '),
+        },
+      ],
+    });
+  }
+
+  // Add action button
+  if (includeButton) {
+    blocks.push({
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: isOpen ? '✓ Close Ticket' : '↻ Reopen Ticket',
+            emoji: true,
+          },
+          style: isOpen ? undefined : 'primary',
+          value: ticket.id,
+          action_id: 'toggle_ticket_status',
+        },
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: '📊 Dashboard',
+            emoji: true,
+          },
+          url: dashboardUrl,
+          action_id: 'view_dashboard',
+        },
+      ],
+    });
+  }
+
+  // Footer
+  blocks.push(
+    {
+      type: 'divider',
+    },
+    {
+      type: 'context',
+      elements: [
+        {
+          type: 'mrkdwn',
+          text: `💬 Reply in this thread to respond to the visitor`,
+        },
+      ],
+    }
+  );
+
+  return blocks;
+}
+
+/**
  * Create a new ticket root message in Slack.
  */
 export async function createTicketInSlack(
@@ -224,116 +339,14 @@ export async function createTicketInSlack(
   }
 
   const dashboardUrl = `${BASE_URL}/tickets/${ticket.id}`;
-  
-  // Build metadata fields for Block Kit
-  const metadataFields: Array<{ type: string; text: string }> = [];
-  if (ticket.visitorEmail) {
-    metadataFields.push({ type: 'mrkdwn', text: `*Email:* ${ticket.visitorEmail}` });
-  }
-  if (ticket.visitorName) {
-    metadataFields.push({ type: 'mrkdwn', text: `*Name:* ${ticket.visitorName}` });
-  }
-  if (ticket.metadata) {
-    for (const [key, value] of Object.entries(ticket.metadata)) {
-      metadataFields.push({ type: 'mrkdwn', text: `*${key}:* ${String(value)}` });
-    }
-  }
+  const blocks = buildTicketBlocks(ticket, dashboardUrl);
 
   try {
     const result = await client.chat.postMessage({
       channel: channelId,
-      text: `🎫 New Support Ticket`,
-      blocks: [
-        {
-          type: 'header',
-          text: {
-            type: 'plain_text',
-            text: '🎫 New Support Ticket',
-            emoji: true,
-          },
-        },
-        {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: ticket.firstMessage,
-          },
-        },
-        ...(metadataFields.length > 0 ? [{
-          type: 'section' as const,
-          fields: metadataFields as Array<{ type: 'mrkdwn'; text: string }>,
-        }] : []),
-        {
-          type: 'divider',
-        },
-        {
-          type: 'context',
-          elements: [
-            {
-              type: 'mrkdwn',
-              text: `<${dashboardUrl}|View in Dashboard> • Reply in this thread to respond`,
-            },
-          ],
-        },
-      ] as never[],
+      text: `🎫 New Support Ticket from ${ticket.visitorName || ticket.visitorEmail || 'Visitor'}`,
+      blocks: blocks as never[],
     });
-
-    // Add interactive button
-    if (result.ok && result.ts) {
-      await client.chat.update({
-        channel: channelId,
-        ts: result.ts,
-        text: `🎫 New Support Ticket`, // Fallback text
-        blocks: [
-          {
-            type: 'header',
-            text: {
-              type: 'plain_text',
-              text: '🎫 New Support Ticket',
-              emoji: true,
-            },
-          },
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: ticket.firstMessage,
-            },
-          },
-          ...(metadataFields.length > 0 ? [{
-            type: 'section' as const,
-            fields: metadataFields as Array<{ type: 'mrkdwn'; text: string }>,
-          }] : []),
-          {
-            type: 'actions',
-            elements: [
-              {
-                type: 'button',
-                text: {
-                  type: 'plain_text',
-                  text: 'Update Status',
-                  emoji: true,
-                },
-                value: ticket.id,
-                action_id: 'update_status',
-              },
-            ],
-          },
-          {
-            type: 'divider',
-          },
-          {
-            type: 'context',
-            elements: [
-              {
-                type: 'mrkdwn',
-                text: `<${dashboardUrl}|View in Dashboard> • Reply in this thread to respond`,
-              },
-            ],
-          },
-        ] as never[],
-      });
-    }
 
     if (result.ok && result.ts) {
       // Get permalink
@@ -566,81 +579,46 @@ export async function updateSlackMessage(
   }
 
   const dashboardUrl = `${BASE_URL}/tickets/${ticket.id}`;
-  
-  // Rebuild metadata fields
-  const metadataFields: Array<{ type: string; text: string }> = [];
-  if (ticket.visitorEmail) {
-    metadataFields.push({ type: 'mrkdwn', text: `*Email:* ${ticket.visitorEmail}` });
-  }
-  if (ticket.visitorName) {
-    metadataFields.push({ type: 'mrkdwn', text: `*Name:* ${ticket.visitorName}` });
-  }
-  if (ticket.metadata) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const meta = ticket.metadata as Record<string, any>;
-    for (const [key, value] of Object.entries(meta)) {
-      metadataFields.push({ type: 'mrkdwn', text: `*${key}:* ${String(value)}` });
-    }
-  }
-
-  // Add status to metadata
-  metadataFields.push({ type: 'mrkdwn', text: `*Status:* ${ticket.status}` });
+  const blocks = buildTicketBlocks(ticket, dashboardUrl);
 
   try {
     await client.chat.update({
       channel: channelId,
       ts: ts,
       text: `🎫 Support Ticket (${ticket.status})`,
-      blocks: [
-        {
-          type: 'header',
-          text: {
-            type: 'plain_text',
-            text: `🎫 Support Ticket (${ticket.status})`,
-            emoji: true,
-          },
-        },
-        {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: ticket.firstMessage,
-          },
-        },
-        ...(metadataFields.length > 0 ? [{
-          type: 'section' as const,
-          fields: metadataFields as Array<{ type: 'mrkdwn'; text: string }>,
-        }] : []),
-        {
-          type: 'actions',
-          elements: [
-            {
-              type: 'button',
-              text: {
-                type: 'plain_text',
-                text: 'Update Status',
-                emoji: true,
-              },
-              value: ticket.id,
-              action_id: 'update_status',
-            },
-          ],
-        },
-        {
-          type: 'divider',
-        },
-        {
-          type: 'context',
-          elements: [
-            {
-              type: 'mrkdwn',
-              text: `<${dashboardUrl}|View in Dashboard> • Reply in this thread to respond`,
-            },
-          ],
-        },
-      ] as never[],
+      blocks: blocks as never[],
     });
   } catch (error) {
     console.error('Failed to update Slack message:', error);
+  }
+}
+
+/**
+ * Post a status change message to a Slack thread.
+ */
+export async function postStatusChangeToSlackThread(
+  accountId: string,
+  channelId: string,
+  threadTs: string,
+  newStatus: TicketStatus
+): Promise<void> {
+  const client = await getSlackClient(accountId);
+  if (!client) {
+    return;
+  }
+
+  const statusEmoji = newStatus === TicketStatus.CLOSED ? '✅' : '🔄';
+  const statusText = newStatus === TicketStatus.CLOSED
+    ? 'This ticket has been closed.'
+    : 'This ticket has been reopened.';
+
+  try {
+    await client.chat.postMessage({
+      channel: channelId,
+      thread_ts: threadTs,
+      text: `${statusEmoji} ${statusText}`,
+    });
+  } catch (error) {
+    console.error('Failed to post status change to Slack thread:', error);
   }
 }

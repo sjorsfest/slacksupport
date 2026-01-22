@@ -5,7 +5,9 @@ import {
   verifySlackSignature,
   openStatusModal,
   updateSlackMessage,
+  postStatusChangeToSlackThread,
 } from '~/lib/slack.server';
+import { triggerWebhooks } from '~/lib/webhook.server';
 
 export async function action({ request }: ActionFunctionArgs) {
   if (request.method !== 'POST') {
@@ -46,6 +48,59 @@ export async function action({ request }: ActionFunctionArgs) {
   // Handle Button Click
   if (payload.type === 'block_actions') {
     for (const action of payload.actions) {
+      // Handle toggle ticket status button (Close/Reopen)
+      if (action.action_id === 'toggle_ticket_status') {
+        const ticketId = action.value;
+
+        // Get current ticket with all needed data
+        const ticket = await prisma.ticket.findUnique({
+          where: { id: ticketId },
+          include: {
+            messages: { orderBy: { createdAt: 'asc' }, take: 1 },
+            visitor: true,
+          },
+        });
+
+        if (ticket) {
+          // Toggle status
+          const newStatus = ticket.status === TicketStatus.OPEN ? TicketStatus.CLOSED : TicketStatus.OPEN;
+
+          // Update ticket in database
+          const updatedTicket = await prisma.ticket.update({
+            where: { id: ticketId },
+            data: { status: newStatus },
+          });
+
+          // Update the Slack message
+          if (ticket.slackChannelId && ticket.slackRootMessageTs) {
+            await updateSlackMessage(accountId, ticket.slackChannelId, ticket.slackRootMessageTs, {
+              id: updatedTicket.id,
+              status: updatedTicket.status,
+              firstMessage: ticket.messages[0]?.text || 'No message',
+              visitorEmail: ticket.visitor.email || undefined,
+              visitorName: ticket.visitor.name || undefined,
+              metadata: ticket.visitor.metadata as Record<string, unknown>,
+            });
+
+            // Post status change message to thread
+            await postStatusChangeToSlackThread(
+              accountId,
+              ticket.slackChannelId,
+              ticket.slackThreadTs || ticket.slackRootMessageTs,
+              newStatus
+            );
+          }
+
+          // Trigger webhook
+          await triggerWebhooks(accountId, ticketId, 'ticket.updated', {
+            ticketId,
+            accountId,
+            status: newStatus,
+          });
+        }
+      }
+
+      // Handle legacy update_status button (opens modal)
       if (action.action_id === 'update_status') {
         const ticketId = action.value;
         const triggerId = payload.trigger_id;
@@ -100,7 +155,22 @@ export async function action({ request }: ActionFunctionArgs) {
             metadata: updatedTicket.visitor.metadata as Record<string, unknown>,
           }
         );
+
+        // Post status change message to thread
+        await postStatusChangeToSlackThread(
+          accountId,
+          updatedTicket.slackChannelId,
+          updatedTicket.slackThreadTs || updatedTicket.slackRootMessageTs,
+          updatedTicket.status
+        );
       }
+
+      // Trigger webhook
+      await triggerWebhooks(accountId, ticketId, 'ticket.updated', {
+        ticketId,
+        accountId,
+        status: updatedTicket.status,
+      });
     }
     // Return empty body to close modal
     return new Response(null, { status: 200 });
