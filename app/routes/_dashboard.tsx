@@ -140,6 +140,167 @@ export default function DashboardLayout() {
     }
   };
 
+  // Reusable nav item renderer for both desktop and mobile
+  const renderNavItem = (item: typeof navItems[0], isMobile = false) => {
+    const isActive = location.pathname.startsWith(item.path);
+    const isLocked = !hasActiveSubscription;
+
+    const navContent = (
+      <div
+        className={cn(
+          "relative flex items-center transition-all duration-200 group overflow-hidden",
+          isMobile
+            ? cn(
+                "flex-col gap-1 px-3 py-2 rounded-xl",
+                isLocked
+                  ? "opacity-60 text-muted-foreground"
+                  : isActive
+                    ? "text-primary-700"
+                    : "text-muted-foreground"
+              )
+            : cn(
+                "gap-3 px-4 py-3 rounded-xl",
+                isLocked
+                  ? "opacity-60 cursor-not-allowed text-muted-foreground"
+                  : isActive
+                    ? "bg-primary/10 text-primary-700 shadow-sm"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )
+        )}
+      >
+        {isActive && !isLocked && !isMobile && (
+          <motion.div
+            layoutId="activeNav"
+            className="absolute inset-0 bg-primary/10 rounded-xl"
+            initial={false}
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 30,
+            }}
+          />
+        )}
+
+        {isActive && !isLocked && isMobile && (
+          <motion.div
+            layoutId="activeNavMobile"
+            className="absolute inset-0 bg-primary/20 rounded-xl"
+            initial={false}
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 30,
+            }}
+          />
+        )}
+
+        <div className="relative">
+          <item.icon
+            className={cn(
+              "relative z-10 transition-transform",
+              isMobile ? "w-5 h-5" : "w-5 h-5 group-hover:scale-110 group-hover:rotate-3",
+              isLocked ? "text-muted-foreground" : isActive ? "text-primary-700" : item.color
+            )}
+          />
+          {/* Badge for mobile - positioned on icon */}
+          {isMobile && item.path === "/tickets" && account?._count?.tickets ? (
+            <Badge variant="fun" className="absolute -top-2 -right-2 h-4 w-4 p-0 flex items-center justify-center text-[10px] z-10">
+              {account._count.tickets}
+            </Badge>
+          ) : null}
+        </div>
+
+        <span className={cn(
+          "font-medium relative z-10",
+          isMobile && "text-[10px]"
+        )}>
+          {item.label}
+        </span>
+
+        {/* Badge for desktop */}
+        {!isMobile && item.path === "/tickets" && account?._count?.tickets ? (
+          <Badge variant="fun" className="ml-auto relative z-10">
+            {account._count.tickets}
+          </Badge>
+        ) : null}
+
+        {/* Connection info - desktop only */}
+        {!isMobile && item.path === "/connect" && (account?.slackInstallation || account?.discordInstallation) && (
+          <span className={cn(
+            "absolute bottom-0.5 left-12 flex items-center gap-1 text-[10px] z-10",
+            isLocked ? "text-muted-foreground" : isActive ? "text-primary-700" : "text-muted-foreground"
+          )}>
+            {account.slackInstallation && (
+              <>
+                <Slack className="w-2.5 h-2.5" />
+                {account.slackInstallation.slackTeamName}
+              </>
+            )}
+            {account.discordInstallation && !account.slackInstallation && (
+              <>
+                <FaDiscord className="w-2.5 h-2.5" />
+                {account.discordInstallation.discordGuildName}
+              </>
+            )}
+          </span>
+        )}
+      </div>
+    );
+
+    if (isLocked) {
+      return (
+        <button
+          key={item.path}
+          type="button"
+          onMouseEnter={() => !isMobile && handleLockedNavigation(item.path)}
+          onMouseLeave={() => !isMobile && handleLockedNavigation(null)}
+          onFocus={() => !isMobile && handleLockedNavigation(item.path)}
+          onBlur={() => !isMobile && handleLockedNavigation(null)}
+          className={cn(
+            "relative text-left",
+            isMobile ? "flex-1 flex justify-center" : "block w-full"
+          )}
+          aria-disabled="true"
+        >
+          {navContent}
+          {!isMobile && lockedTooltipPath === item.path && (
+            <div className="absolute left-1/2 top-full z-20 mt-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-foreground shadow-md">
+              Subscribe to unlock navigation
+            </div>
+          )}
+        </button>
+      );
+    }
+
+    if (item.external) {
+      return (
+        <button
+          key={item.path}
+          type="button"
+          onClick={handleBillingClick}
+          className={cn(
+            "cursor-pointer",
+            isMobile ? "flex-1 flex justify-center" : "block w-full text-left"
+          )}
+        >
+          {navContent}
+        </button>
+      );
+    }
+
+    return (
+      <Link
+        key={item.path}
+        to={item.path}
+        className={cn(
+          isMobile ? "flex-1 flex justify-center" : "block"
+        )}
+      >
+        {navContent}
+      </Link>
+    );
+  };
+
   return (
     <>
     <SupportWidget
@@ -150,9 +311,9 @@ export default function DashboardLayout() {
       controlledByHost={true}
       widgetIsOpen={supportEnabled}
     />
-    <div className="h-[100dvh] flex flex-row bg-background font-sans overflow-hidden">
-      {/* Sidebar */}
-      <aside className="flex w-72 m-4 rounded-3xl bg-card border-2 border-black flex-col overflow-hidden transition-all duration-300 h-[calc(100vh-2rem)] flex-shrink-0" style={{ boxShadow: '4px 4px 0px 0px #1a1a1a' }}>
+    <div className="h-[100dvh] flex flex-col md:flex-row bg-background font-sans overflow-hidden">
+      {/* Desktop Sidebar - Hidden on mobile */}
+      <aside className="hidden md:flex w-72 m-4 rounded-3xl bg-card border-2 border-black flex-col overflow-hidden transition-all duration-300 h-[calc(100vh-2rem)] flex-shrink-0" style={{ boxShadow: '4px 4px 0px 0px #1a1a1a' }}>
         {/* Header */}
         <div className="p-6 border-b border-border/50">
           <div className="flex items-center space-x-[-1rem]">
@@ -174,107 +335,7 @@ export default function DashboardLayout() {
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {navItems.map((item) => {
-            const isActive = location.pathname.startsWith(item.path);
-            const isLocked = !hasActiveSubscription;
-            const navContent = (
-              <div
-                className={cn(
-                  "relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group overflow-hidden",
-                  isLocked
-                    ? "opacity-60 cursor-not-allowed text-muted-foreground"
-                    : isActive
-                      ? "bg-primary/10 text-primary-700 shadow-sm"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                {isActive && !isLocked && (
-                  <motion.div
-                    layoutId="activeNav"
-                    className="absolute inset-0 bg-primary/10 rounded-xl"
-                    initial={false}
-                    transition={{
-                      type: "spring",
-                      stiffness: 300,
-                      damping: 30,
-                    }}
-                  />
-                )}
-
-                <item.icon
-                  className={cn(
-                    "w-5 h-5 relative z-10 transition-transform group-hover:scale-110 group-hover:rotate-3",
-                    isLocked ? "text-muted-foreground" : isActive ? "text-primary-700" : item.color
-                  )}
-                />
-
-                <span className="font-medium relative z-10">
-                  {item.label}
-                </span>
-
-                {item.path === "/tickets" && account?._count?.tickets ? (
-                  <Badge variant="fun" className="ml-auto relative z-10">
-                    {account._count.tickets}
-                  </Badge>
-                ) : null}
-
-                {item.path === "/connect" && (account?.slackInstallation || account?.discordInstallation) && (
-                  <span className={cn(
-                    "absolute bottom-0.5 left-12 flex items-center gap-1 text-[10px] z-10",
-                    isLocked ? "text-muted-foreground" : isActive ? "text-primary-700" : "text-muted-foreground"
-                  )}>
-                    {account.slackInstallation && (
-                      <>
-                        <Slack className="w-2.5 h-2.5" />
-                        {account.slackInstallation.slackTeamName}
-                      </>
-                    )}
-                    {account.discordInstallation && !account.slackInstallation && (
-                      <>
-                        <FaDiscord className="w-2.5 h-2.5" />
-                        {account.discordInstallation.discordGuildName}
-                      </>
-                    )}
-                  </span>
-                )}
-              </div>
-            );
-
-            return (
-              isLocked ? (
-                <button
-                  key={item.path}
-                  type="button"
-                  onMouseEnter={() => handleLockedNavigation(item.path)}
-                  onMouseLeave={() => handleLockedNavigation(null)}
-                  onFocus={() => handleLockedNavigation(item.path)}
-                  onBlur={() => handleLockedNavigation(null)}
-                  className="relative block w-full text-left"
-                  aria-disabled="true"
-                >
-                  {navContent}
-                  {lockedTooltipPath === item.path && (
-                    <div className="absolute left-1/2 top-full z-20 mt-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-foreground shadow-md">
-                      Subscribe to unlock navigation
-                    </div>
-                  )}
-                </button>
-              ) : item.external ? (
-                <button
-                  key={item.path}
-                  type="button"
-                  onClick={handleBillingClick}
-                  className="block w-full text-left cursor-pointer"
-                >
-                  {navContent}
-                </button>
-              ) : (
-                <Link key={item.path} to={item.path} className="block">
-                  {navContent}
-                </Link>
-              )
-            );
-          })}
+          {navItems.map((item) => renderNavItem(item, false))}
         </nav>
 
         <div className="px-3 pb-2">
@@ -319,15 +380,45 @@ export default function DashboardLayout() {
         </div>
       </aside>
 
+      {/* Mobile Header - Visible only on mobile */}
+      <header className="md:hidden flex items-center justify-between px-4 py-3 bg-card border-b-2 border-black">
+        <div className="flex items-center gap-2">
+          <img
+            src="/static/donkey.png"
+            alt="Donkey Support"
+            className="w-10 h-10 object-contain"
+          />
+          <h1 className="font-display text-xl font-bold text-primary-500 tracking-tighter">
+            Donkey Support
+          </h1>
+        </div>
+        <Button
+          onClick={handleLogout}
+          variant="ghost"
+          size="icon"
+          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          title="Sign out"
+        >
+          <LogOut className="w-5 h-5" />
+        </Button>
+      </header>
+
       {/* Main Content Area */}
-      <main className="flex-1 my-4 mr-4 rounded-3xl bg-white/90 border-2 border-black backdrop-blur-sm overflow-hidden flex flex-col relative [box-shadow:4px_4px_0px_0px_#1a1a1a]">
+      <main className="flex-1 md:my-4 md:mr-4 md:rounded-3xl bg-white/90 md:border-2 md:border-black backdrop-blur-sm overflow-hidden flex flex-col relative md:[box-shadow:4px_4px_0px_0px_#1a1a1a]">
         {/* Decorative background elements */}
         <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
 
-        <div className="flex-1 overflow-y-auto p-6 relative">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 relative pb-20 md:pb-6">
           <Outlet />
         </div>
       </main>
+
+      {/* Mobile Bottom Navigation - Visible only on mobile */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t-2 border-black px-2 py-2 z-50">
+        <div className="flex items-center justify-around">
+          {navItems.map((item) => renderNavItem(item, true))}
+        </div>
+      </nav>
     </div>
 
     </>
