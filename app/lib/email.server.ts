@@ -27,7 +27,7 @@ export async function sendVerificationEmail({
   const donkeySupportLogoContent = fs
     .readFileSync(donkeySupportLogoPath)
     .toString("base64");
-  const domain = process.env.NODE_ENV === "production" ? "resend.com" : "resend.dev";
+  const domain = process.env.NODE_ENV === "production" ? "donkey.support" : "resend.dev";
 
   const res = await resend.emails.send({
     from: `Donkey Support <onboarding@${domain}>`,

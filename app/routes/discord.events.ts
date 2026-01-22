@@ -91,7 +91,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
   // Handle Message Component interactions (type 3) - button clicks
   if (payload.type === 3) {
-    console.log('[Discord Events] Received button interaction:', JSON.stringify(payload, null, 2));
+    console.log('[Discord Events] Received button interaction:');
 
     try {
       const interaction = payload as {
