@@ -164,6 +164,7 @@ html,
 body,
 #root {
   @apply bg-background text-foreground antialiased font-sans;
+  height: 100%;
   min-height: 100%;
   overflow-x: hidden;
 }
@@ -193,7 +194,15 @@ body {
   -webkit-overflow-scrolling: touch;
   overflow-y: scroll;
   overflow-x: hidden;
-  touch-action: pan-y;
+  touch-action: manipulation;
+}
+
+/* iOS Safari specific fix for scroll containers */
+@supports (-webkit-touch-callout: none) {
+  .ios-scroll {
+    height: 100%;
+    flex: 1 1 0%;
+  }
 }
 
 .touch-pan-y {
