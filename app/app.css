@@ -166,7 +166,19 @@ body,
   @apply bg-background text-foreground antialiased font-sans;
   height: 100%;
   min-height: 100%;
+}
+
+/* Fix iOS scroll issues - only hide overflow-x, allow vertical scroll */
+html {
   overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+body {
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 input, textarea, select {
