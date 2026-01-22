@@ -91,16 +91,20 @@ export async function action({ request }: ActionFunctionArgs) {
 
   // Handle Message Component interactions (type 3) - button clicks
   if (payload.type === 3) {
-    const interaction = payload as {
-      data?: { custom_id?: string };
-      guild_id?: string;
-      channel_id?: string;
-      message?: { id: string };
-    };
+    console.log('[Discord Events] Received button interaction:', JSON.stringify(payload, null, 2));
 
-    const customId = interaction.data?.custom_id;
-    if (customId?.startsWith('toggle_status:')) {
-      const ticketId = customId.replace('toggle_status:', '');
+    try {
+      const interaction = payload as {
+        data?: { custom_id?: string };
+        guild_id?: string;
+        channel_id?: string;
+        message?: { id: string };
+      };
+
+      const customId = interaction.data?.custom_id;
+      if (customId?.startsWith('toggle_status:')) {
+        const ticketId = customId.replace('toggle_status:', '');
+        console.log('[Discord Events] Processing toggle_status for ticket:', ticketId);
 
       // Find installation by guild ID
       const guildId = interaction.guild_id;
@@ -186,6 +190,14 @@ export async function action({ request }: ActionFunctionArgs) {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
+    } catch (error) {
+      console.error('[Discord Events] Error handling button interaction:', error);
+      // Return acknowledgement even on error to avoid "interaction failed"
+      return new Response(JSON.stringify({ type: 6 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
   }
 
   // Handle Gateway events (MESSAGE_CREATE, etc.)
