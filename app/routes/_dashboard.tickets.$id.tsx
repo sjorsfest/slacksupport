@@ -86,7 +86,7 @@ export default function TicketDetail() {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row lg:h-full border border-border rounded-xl overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col lg:flex-row border border-border rounded-xl overflow-hidden">
       {/* Main chat area */}
       <div className="flex-1 flex flex-col min-h-0">
         {/* Header */}
