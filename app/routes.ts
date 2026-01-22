@@ -49,6 +49,7 @@ export default [
   route("slack/install", "routes/slack.install.ts"),
   route("slack/oauth/callback", "routes/slack.oauth.callback.ts"),
   route("slack/events", "routes/slack.events.ts"),
+  route("slack/interactive", "routes/slack.interactive.ts"),
 
   // Discord routes
   route("discord/install", "routes/discord.install.ts"),
