@@ -152,7 +152,7 @@ export default function DashboardLayout() {
       controlledByHost={true}
       widgetIsOpen={supportEnabled}
     />
-    <div className="fixed inset-0 flex flex-col lg:flex-row bg-background font-sans overflow-hidden">
+    <div className="h-[100dvh] flex flex-col lg:flex-row bg-background font-sans overflow-hidden">
       {/* Fun Sidebar - Desktop Only */}
       <aside className="hidden lg:flex w-72 m-4 rounded-3xl bg-card border-2 border-black flex-col overflow-hidden transition-all duration-300 h-[calc(100vh-2rem)] flex-shrink-0" style={{ boxShadow: '4px 4px 0px 0px #1a1a1a' }}>
         {/* Header */}
@@ -322,7 +322,7 @@ export default function DashboardLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 m-0 lg:m-4 lg:ml-0 rounded-none lg:rounded-3xl bg-white/90 border-x-0 lg:border-2 lg:border-black backdrop-blur-sm overflow-hidden flex flex-col relative lg:[box-shadow:4px_4px_0px_0px_#1a1a1a] min-h-0">
+      <main className="flex-1 m-0 lg:m-4 lg:ml-0 rounded-none lg:rounded-3xl bg-white/90 border-x-0 lg:border-2 lg:border-black backdrop-blur-sm lg:overflow-hidden flex flex-col relative lg:[box-shadow:4px_4px_0px_0px_#1a1a1a] min-h-0">
         {/* Mobile Header */}
         <div className="lg:hidden p-4 border-b border-border/50 bg-white/80 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between relative">
           <div className="flex items-center gap-2">
@@ -397,7 +397,7 @@ export default function DashboardLayout() {
         {/* Decorative background elements */}
         <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
 
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain ios-scroll p-4 pb-24 lg:p-6 lg:pb-6 relative z-10">
+        <div className="flex-1 min-h-0 overflow-y-scroll overscroll-y-contain ios-scroll p-4 pb-24 lg:p-6 lg:pb-6 relative" style={{ WebkitOverflowScrolling: 'touch' }}>
           <Outlet />
         </div>
       </main>
