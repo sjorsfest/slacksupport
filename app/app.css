@@ -193,6 +193,10 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+.touch-pan-y {
+  touch-action: pan-y;
+}
+
 @supports (-webkit-touch-callout: none) {
   body {
     background-attachment: scroll;

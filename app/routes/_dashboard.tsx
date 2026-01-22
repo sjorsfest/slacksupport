@@ -152,7 +152,7 @@ export default function DashboardLayout() {
       controlledByHost={true}
       widgetIsOpen={supportEnabled}
     />
-    <div className="h-[100dvh] lg:h-screen flex flex-col lg:flex-row bg-background font-sans overflow-hidden">
+    <div className="h-[100dvh] lg:h-screen flex flex-col lg:flex-row bg-background font-sans lg:overflow-hidden">
       {/* Fun Sidebar - Desktop Only */}
       <aside className="hidden lg:flex w-72 m-4 rounded-3xl bg-card border-2 border-black flex-col overflow-hidden transition-all duration-300 h-[calc(100vh-2rem)] flex-shrink-0" style={{ boxShadow: '4px 4px 0px 0px #1a1a1a' }}>
         {/* Header */}
@@ -397,14 +397,14 @@ export default function DashboardLayout() {
         {/* Decorative background elements */}
         <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/40 to-transparent pointer-events-none" />
 
-        <div className="flex-1 min-h-0 overflow-auto ios-scroll p-4 pb-24 lg:p-6 lg:pb-6 relative z-10">
+        <div className="flex-1 min-h-0 overflow-auto ios-scroll touch-pan-y p-4 pb-24 lg:p-6 lg:pb-6 relative z-10">
           <Outlet />
         </div>
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-border shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] z-50 pb-safe">
-        <div className="flex items-center justify-around p-2">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-border shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] z-50 pb-safe pointer-events-none">
+        <div className="flex items-center justify-around p-2 pointer-events-auto">
           {navItems.map((item) => {
             const isActive = location.pathname.startsWith(item.path);
             const content = (
