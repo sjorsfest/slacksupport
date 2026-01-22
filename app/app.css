@@ -189,6 +189,16 @@ body {
   background-attachment: fixed;
 }
 
+.ios-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+@supports (-webkit-touch-callout: none) {
+  body {
+    background-attachment: scroll;
+  }
+}
+
 .font-display {
   font-family: var(--font-display);
 }
