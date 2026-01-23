@@ -186,9 +186,18 @@ export default function WidgetFrame() {
     name: data.name || "",
     email: data.email || "",
   });
+  const [hasSubmittedInfo, setHasSubmittedInfo] = useState(
+    // If we already have valid name and email from props, consider it submitted
+    Boolean(data.name && data.email)
+  );
+  const [emailError, setEmailError] = useState<string | null>(null);
 
-  const showMissingInfoForm =
-    (!visitorInfo.name || !visitorInfo.email) && !ticketId;
+  // Simple email validation regex
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  const showMissingInfoForm = !hasSubmittedInfo && !ticketId;
 
   const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
   const POLLING_INTERVAL_MS = 2500; // 2.5 seconds
@@ -405,6 +414,26 @@ export default function WidgetFrame() {
 
   const handleInfoSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setEmailError(null);
+
+    // Validate name
+    if (!visitorInfo.name.trim()) {
+      return;
+    }
+
+    // Validate email
+    if (!visitorInfo.email.trim()) {
+      setEmailError("Please enter your email");
+      return;
+    }
+
+    if (!isValidEmail(visitorInfo.email.trim())) {
+      setEmailError("Please enter a valid email address");
+      return;
+    }
+
+    // All valid - submit the form
+    setHasSubmittedInfo(true);
   };
 
   const handleSendMessage = async () => {
@@ -588,16 +617,24 @@ export default function WidgetFrame() {
                       id="email"
                       type="email"
                       value={visitorInfo.email}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setVisitorInfo((prev) => ({
                           ...prev,
                           email: e.target.value,
-                        }))
-                      }
+                        }));
+                        // Clear error when user starts typing
+                        if (emailError) setEmailError(null);
+                      }}
                       placeholder="Where can we reach you?"
                       required
-                      className="bg-white border-slate-200 h-12 rounded-xl text-base shadow-sm focus:ring-2 focus:ring-slate-300"
+                      className={cn(
+                        "bg-white border-slate-200 h-12 rounded-xl text-base shadow-sm focus:ring-2 focus:ring-slate-300",
+                        emailError && "border-red-400 focus:ring-red-200"
+                      )}
                     />
+                    {emailError && (
+                      <p className="text-sm text-red-500 ml-1">{emailError}</p>
+                    )}
                   </div>
                   <Button
                     type="submit"
