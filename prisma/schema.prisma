@@ -18,6 +18,7 @@ enum MessageSource {
   visitor
   slack
   discord
+  telegram
 }
 
 enum WebhookDeliveryStatus {
@@ -50,6 +51,7 @@ model Account {
   slackChannelConfigs   SlackChannelConfig[]
   discordInstallation   DiscordInstallation?
   discordChannelConfigs DiscordChannelConfig[]
+  telegramGroupConfigs  TelegramGroupConfig[]
   tickets               Ticket[]
   visitors              Visitor[]
   webhookEndpoints      WebhookEndpoint[]
@@ -202,6 +204,25 @@ model DiscordChannelConfig {
   @@map("discord_channel_configs")
 }
 
+// TelegramGroupConfig - Supergroups/forums where tickets appear in Telegram
+model TelegramGroupConfig {
+  id                  String   @id @default(cuid())
+  accountId           String
+  telegramChatId      String   // Supergroup ID (negative number as string)
+  telegramChatTitle   String
+  isForumEnabled      Boolean  @default(true)
+  isDefault           Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, telegramChatId])
+  @@unique([telegramChatId]) // Each group can only be connected to one account
+  @@index([accountId])
+  @@map("telegram_group_configs")
+}
+
 // WidgetConfig - Theming and settings for the widget
 model WidgetConfig {
   id              String   @id @default(cuid())
@@ -259,6 +280,11 @@ model Ticket {
   discordThreadId     String?        // Thread ID for matching replies
   discordMessageId    String?        // Initial message ID in thread
   discordPermalink    String?
+  // Telegram topic mapping
+  telegramChatId      String?        // Supergroup chat ID
+  telegramTopicId     Int?           // Forum topic ID (message_thread_id)
+  telegramRootMessageId Int?         // First message ID in topic
+  telegramPermalink   String?        // Deep link to topic
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 
@@ -272,6 +298,8 @@ model Ticket {
   @@index([slackChannelId, slackThreadTs])
   @@index([accountId, discordThreadId])
   @@index([discordChannelId, discordThreadId])
+  @@index([accountId, telegramTopicId])
+  @@index([telegramChatId, telegramTopicId])
   @@index([visitorId])
   @@map("tickets")
 }
@@ -292,6 +320,11 @@ model Message {
   discordUserId    String?      // Discord user who sent the message
   discordUserName  String?      // Display name from Discord
   rawDiscordEvent  Json?        // Raw Discord event for debugging
+  // Telegram message info
+  telegramMessageId  Int?       // Telegram message ID
+  telegramUserId     String?    // Telegram user ID (string for large IDs)
+  telegramUserName   String?    // Display name from Telegram
+  rawTelegramEvent   Json?      // Raw Telegram update for debugging
   createdAt       DateTime      @default(now())
 
   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
@@ -300,6 +333,7 @@ model Message {
   @@index([ticketId, createdAt])
   @@index([slackTs])
   @@index([discordMessageId])
+  @@index([telegramMessageId])
   @@map("messages")
 }
 
@@ -345,7 +379,7 @@ model WebhookDelivery {
   @@map("webhook_deliveries")
 }
 
-// EventDedup - Prevents duplicate Slack/Discord event processing
+// EventDedup - Prevents duplicate Slack/Discord/Telegram event processing
 model EventDedup {
   id             String   @id @default(cuid())
   // Slack event deduplication
@@ -354,10 +388,14 @@ model EventDedup {
   // Discord event deduplication
   discordEventId String?
   discordGuildId String?
+  // Telegram event deduplication
+  telegramUpdateId Int?
+  telegramChatId   String?
   processedAt    DateTime @default(now())
 
   @@unique([slackTeamId, slackEventId])
   @@unique([discordGuildId, discordEventId])
+  @@unique([telegramChatId, telegramUpdateId])
   @@index([processedAt])
   @@map("event_dedups")
 }

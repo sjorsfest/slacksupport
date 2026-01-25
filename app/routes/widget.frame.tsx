@@ -152,11 +152,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 type Message = {
   id: string;
-  source: "visitor" | "slack" | "discord";
+  source: "visitor" | "slack" | "discord" | "telegram";
   text: string;
   createdAt: string;
   slackUserName?: string | null;
   discordUserName?: string | null;
+  telegramUserName?: string | null;
   pending?: boolean;
 };
 
@@ -737,9 +738,10 @@ export default function WidgetFrame() {
                               <span className="text-[10px] text-slate-400 px-1 font-medium">
                                 {msg.source !== "visitor" &&
                                   (msg.slackUserName ||
-                                    msg.discordUserName) && (
+                                    msg.discordUserName ||
+                                    msg.telegramUserName) && (
                                     <span className="mr-1">
-                                      {msg.slackUserName || msg.discordUserName}{" "}
+                                      {msg.slackUserName || msg.discordUserName || msg.telegramUserName}{" "}
                                       •
                                     </span>
                                   )}

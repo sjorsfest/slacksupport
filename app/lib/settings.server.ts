@@ -20,6 +20,10 @@ export const settings = {
   DISCORD_PUBLIC_KEY: process.env.DISCORD_PUBLIC_KEY || '',
   DISCORD_BOT_TOKEN: process.env.DISCORD_BOT_TOKEN || '',
 
+  // Telegram
+  TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || '',
+  TELEGRAM_WEBHOOK_SECRET: process.env.TELEGRAM_WEBHOOK_SECRET || '',
+
   BASE_URL: process.env.BASE_URL || 'http://localhost:5173',
   NODE_ENV: (process.env.NODE_ENV || 'development') as 'development' | 'production' | 'test',
   PORT: Number(process.env.PORT) || (process.env.NODE_ENV === 'production' ? 3000 : 5173),

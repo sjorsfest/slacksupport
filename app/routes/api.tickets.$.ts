@@ -5,6 +5,7 @@ import { createTicketSchema, createMessageSchema, updateTicketSchema, ticketFilt
 import { parseRequest } from '~/lib/request.server';
 import { createTicketInSlack, postToSlack } from '~/lib/slack.server';
 import { createTicketInDiscord, postToDiscord } from '~/lib/discord.server';
+import { createTicketInTelegram, postToTelegram } from '~/lib/telegram.server';
 import { triggerWebhooks } from '~/lib/webhook.server';
 
 /**
@@ -64,6 +65,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         createdAt: t.createdAt,
         slackPermalink: t.slackPermalink,
         discordPermalink: t.discordPermalink,
+        telegramPermalink: t.telegramPermalink,
       })),
       pagination: {
         page: filters.page,
@@ -135,6 +137,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         createdAt: true,
         slackUserName: true,
         discordUserName: true,
+        telegramUserName: true,
       },
     });
 
@@ -146,6 +149,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
         createdAt: m.createdAt.toISOString(),
         slackUserName: m.slackUserName,
         discordUserName: m.discordUserName,
+        telegramUserName: m.telegramUserName,
       })),
       ticketStatus: ticket.status,
     });
@@ -212,12 +216,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
         });
       }
 
-      // Get default channel configs (Slack or Discord)
-      const [slackChannelConfig, discordChannelConfig] = await Promise.all([
+      // Get default channel configs (Slack, Discord, or Telegram)
+      const [slackChannelConfig, discordChannelConfig, telegramGroupConfig] = await Promise.all([
         prisma.slackChannelConfig.findFirst({
           where: { accountId: data.accountId, isDefault: true },
         }),
         prisma.discordChannelConfig.findFirst({
+          where: { accountId: data.accountId, isDefault: true },
+        }),
+        prisma.telegramGroupConfig.findFirst({
           where: { accountId: data.accountId, isDefault: true },
         }),
       ]);
@@ -229,6 +236,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
           visitorId: visitor.id,
           slackChannelId: slackChannelConfig?.slackChannelId,
           discordChannelId: discordChannelConfig?.discordChannelId,
+          telegramChatId: telegramGroupConfig?.telegramChatId,
         },
       });
 
@@ -303,6 +311,37 @@ export async function action({ request, params }: ActionFunctionArgs) {
         }
       }
 
+      // Post to Telegram if configured (and no other integration configured)
+      if (telegramGroupConfig && !slackChannelConfig && !discordChannelConfig) {
+        try {
+          const telegramResult = await createTicketInTelegram(
+            data.accountId,
+            telegramGroupConfig.telegramChatId,
+            {
+              id: ticket.id,
+              visitorEmail: visitor.email ?? undefined,
+              visitorName: visitor.name ?? undefined,
+              firstMessage: data.message,
+              metadata: data.metadata,
+            }
+          );
+
+          if (telegramResult) {
+            await prisma.ticket.update({
+              where: { id: ticket.id },
+              data: {
+                telegramTopicId: telegramResult.topicId,
+                telegramRootMessageId: telegramResult.messageId,
+                telegramPermalink: telegramResult.permalink,
+              },
+            });
+          }
+        } catch (telegramError) {
+          console.error('Failed to post to Telegram:', telegramError);
+          // Don't fail the ticket creation if Telegram fails
+        }
+      }
+
       // Trigger webhooks
       await triggerWebhooks(
         data.accountId,
@@ -361,6 +400,12 @@ export async function action({ request, params }: ActionFunctionArgs) {
       if (ticket.discordThreadId) {
         const { setDiscordThreadArchived } = await import('~/lib/discord.server');
         await setDiscordThreadArchived(ticket.discordThreadId, false);
+      }
+
+      // Reopen Telegram topic if exists
+      if (ticket.telegramChatId && ticket.telegramTopicId) {
+        const { reopenForumTopic } = await import('~/lib/telegram.server');
+        await reopenForumTopic(ticket.telegramChatId, ticket.telegramTopicId);
       }
 
       // Update Discord message to show OPEN status
@@ -497,6 +542,30 @@ export async function action({ request, params }: ActionFunctionArgs) {
           }
         } catch (discordError) {
           console.error('Failed to post message to Discord:', discordError);
+        }
+      }
+
+      // Post to Telegram topic if exists
+      if (ticket.telegramChatId && ticket.telegramTopicId) {
+        try {
+          const telegramResult = await postToTelegram(
+            ticket.telegramChatId,
+            data.text,
+            {
+              topicId: ticket.telegramTopicId,
+              source: source as 'visitor' | 'agent',
+              agentName: user?.name || undefined,
+            }
+          );
+
+          if (telegramResult?.messageId) {
+            await prisma.message.update({
+              where: { id: message.id },
+              data: { telegramMessageId: telegramResult.messageId },
+            });
+          }
+        } catch (telegramError) {
+          console.error('Failed to post message to Telegram:', telegramError);
         }
       }
 
