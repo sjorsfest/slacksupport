@@ -9,6 +9,7 @@ import {
   getChatInfo,
   storeTelegramGroupConfig,
   removeTelegramGroupConfig,
+  createForumTopic,
 } from '~/lib/telegram.server';
 import { parseRequest } from '~/lib/request.server';
 import { z } from 'zod';
@@ -156,11 +157,28 @@ export async function action({ request, params }: ActionFunctionArgs) {
         return Response.json({ error: 'No group selected' }, { status: 400 });
       }
 
-      // Send test message to the General topic (topic ID 1) or main chat
+      let topicId: number | undefined;
+
+      // For forum-enabled groups, create a test topic (General topic may be hidden)
+      if (defaultGroup.isForumEnabled) {
+        const topic = await createForumTopic(
+          defaultGroup.telegramChatId,
+          '🧪 Test Connection'
+        );
+        if (!topic) {
+          return Response.json(
+            { error: 'Failed to create test topic. Make sure the bot has "Manage Topics" permission.' },
+            { status: 500 }
+          );
+        }
+        topicId = topic.message_thread_id;
+      }
+
+      // Send test message
       const result = await sendTelegramMessage(
         defaultGroup.telegramChatId,
-        '🧪 This is a test message from your support widget!',
-        { topicId: defaultGroup.isForumEnabled ? 1 : undefined }
+        '✅ Connection successful! Your support widget is connected to this Telegram group.',
+        { topicId }
       );
 
       if (!result) {
