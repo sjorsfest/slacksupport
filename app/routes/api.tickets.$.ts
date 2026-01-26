@@ -558,11 +558,32 @@ export async function action({ request, params }: ActionFunctionArgs) {
             }
           );
 
-          if (telegramResult?.messageId) {
+          if (telegramResult.success) {
             await prisma.message.update({
               where: { id: message.id },
               data: { telegramMessageId: telegramResult.messageId },
             });
+          } else if (telegramResult.topicDeleted) {
+            // Topic was deleted in Telegram - close the ticket
+            console.log(`Telegram topic deleted, closing ticket ${ticket.id}`);
+            await prisma.ticket.update({
+              where: { id: ticket.id },
+              data: {
+                status: 'CLOSED',
+                telegramTopicId: null, // Clear the deleted topic reference
+              },
+            });
+            await triggerWebhooks(
+              ticket.accountId,
+              ticket.id,
+              'ticket.updated',
+              {
+                ticketId: ticket.id,
+                accountId: ticket.accountId,
+                status: 'CLOSED',
+                reason: 'telegram_topic_deleted',
+              }
+            );
           }
         } catch (telegramError) {
           console.error('Failed to post message to Telegram:', telegramError);

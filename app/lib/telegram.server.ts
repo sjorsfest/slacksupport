@@ -263,6 +263,10 @@ export async function reopenForumTopic(
   return response.ok;
 }
 
+export type TelegramSendResult =
+  | { success: true; messageId: number }
+  | { success: false; error: string; topicDeleted?: boolean };
+
 /**
  * Send a message to a Telegram chat or topic.
  */
@@ -273,7 +277,7 @@ export async function sendTelegramMessage(
     topicId?: number;
     parseMode?: 'HTML' | 'Markdown' | 'MarkdownV2';
   }
-): Promise<{ message_id: number } | null> {
+): Promise<TelegramSendResult> {
   const response = await telegramRequest<{ message_id: number }>('sendMessage', {
     chat_id: chatId,
     text,
@@ -282,11 +286,19 @@ export async function sendTelegramMessage(
   });
 
   if (!response.ok) {
-    console.error('Failed to send Telegram message:', response.description);
-    return null;
+    const errorMsg = response.description || 'Unknown error';
+    console.error('Failed to send Telegram message:', errorMsg);
+
+    // Detect if topic was deleted
+    const topicDeleted =
+      errorMsg.includes('thread not found') ||
+      errorMsg.includes('message thread not found') ||
+      errorMsg.includes('TOPIC_DELETED');
+
+    return { success: false, error: errorMsg, topicDeleted };
   }
 
-  return response.result ?? null;
+  return { success: true, messageId: response.result!.message_id };
 }
 
 /**
@@ -367,7 +379,7 @@ export async function createTicketInTelegram(
     parseMode: 'HTML',
   });
 
-  if (!messageResult) {
+  if (!messageResult.success) {
     return null;
   }
 
@@ -378,10 +390,14 @@ export async function createTicketInTelegram(
 
   return {
     topicId,
-    messageId: messageResult.message_id,
+    messageId: messageResult.messageId,
     permalink,
   };
 }
+
+export type TelegramPostResult =
+  | { success: true; messageId: number }
+  | { success: false; topicDeleted?: boolean };
 
 /**
  * Post a message to a Telegram ticket topic.
@@ -394,7 +410,7 @@ export async function postToTelegram(
     source?: 'visitor' | 'agent';
     agentName?: string;
   }
-): Promise<{ messageId: number } | null> {
+): Promise<TelegramPostResult> {
   // Format message based on source
   let formattedText = text;
   if (options?.source === 'visitor') {
@@ -408,7 +424,11 @@ export async function postToTelegram(
     parseMode: 'HTML',
   });
 
-  return result ? { messageId: result.message_id } : null;
+  if (result.success) {
+    return { success: true, messageId: result.messageId };
+  }
+
+  return { success: false, topicDeleted: result.topicDeleted };
 }
 
 // Types for Telegram updates

@@ -181,11 +181,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
         { topicId }
       );
 
-      if (!result) {
-        return Response.json({ error: 'Failed to send test message' }, { status: 500 });
+      if (!result.success) {
+        return Response.json({ error: result.error || 'Failed to send test message' }, { status: 500 });
       }
 
-      return Response.json({ success: true, messageId: result.message_id });
+      return Response.json({ success: true, messageId: result.messageId });
     }
 
     if (path === 'remove-group') {
