@@ -1,7 +1,9 @@
 import { startSlackEventWorker } from './slack-event.job';
 import { startDiscordEventWorker } from './discord-event.job';
+import { startTelegramEventWorker } from './telegram-event.job';
 import { startWebhookDeliveryWorker } from './webhook-delivery.job';
 import { initializeDiscordGateway, disconnectDiscordGateway } from '~/lib/discord-gateway.server';
+import { setTelegramWebhook, isTelegramConfigured } from '~/lib/telegram.server';
 
 /**
  * Start all background workers and services.
@@ -11,6 +13,7 @@ export async function startAllWorkers() {
   const workers = {
     slackEvent: startSlackEventWorker(),
     discordEvent: startDiscordEventWorker(),
+    telegramEvent: startTelegramEventWorker(),
     webhookDelivery: startWebhookDeliveryWorker(),
   };
 
@@ -22,12 +25,23 @@ export async function startAllWorkers() {
     console.log('✅ Discord Gateway client initialized');
   }
 
+  // Set up Telegram webhook
+  if (isTelegramConfigured()) {
+    const webhookSet = await setTelegramWebhook();
+    if (webhookSet) {
+      console.log('✅ Telegram webhook configured');
+    } else {
+      console.warn('⚠️ Failed to set Telegram webhook');
+    }
+  }
+
   // Handle graceful shutdown
   const shutdown = async () => {
     console.log('Shutting down workers...');
     await Promise.all([
       workers.slackEvent.close(),
       workers.discordEvent.close(),
+      workers.telegramEvent.close(),
       workers.webhookDelivery.close(),
       disconnectDiscordGateway(),
     ]);
@@ -43,5 +57,6 @@ export async function startAllWorkers() {
 
 export { startSlackEventWorker } from './slack-event.job';
 export { startDiscordEventWorker } from './discord-event.job';
+export { startTelegramEventWorker } from './telegram-event.job';
 export { startWebhookDeliveryWorker } from './webhook-delivery.job';
 
