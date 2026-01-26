@@ -436,6 +436,9 @@ export type TelegramMessage = {
   text?: string;
   new_chat_member?: TelegramUser;
   left_chat_member?: TelegramUser;
+  // Service messages for forum topics
+  forum_topic_closed?: Record<string, never>;
+  forum_topic_reopened?: Record<string, never>;
 };
 
 export type TelegramChatMemberUpdated = {

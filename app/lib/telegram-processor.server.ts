@@ -108,6 +108,16 @@ async function handleMessage(
     return { processed: false, skipped: true, reason: 'Not a forum topic message' };
   }
 
+  // Handle forum topic closed - close the ticket
+  if (message.forum_topic_closed) {
+    return handleTopicClosed(chatId, message.message_thread_id);
+  }
+
+  // Handle forum topic reopened - reopen the ticket
+  if (message.forum_topic_reopened) {
+    return handleTopicReopened(chatId, message.message_thread_id);
+  }
+
   // Skip messages without text
   if (!message.text) {
     return { processed: false, skipped: true, reason: 'No text content' };
@@ -206,4 +216,96 @@ export async function trackTelegramGroup(
     chatTitle: chat.title || 'Unknown Group',
     isForumEnabled: chat.is_forum || false,
   });
+}
+
+/**
+ * Handle a forum topic being closed in Telegram.
+ * Closes the corresponding ticket.
+ */
+async function handleTopicClosed(
+  chatId: string,
+  topicId: number
+): Promise<ProcessResult> {
+  const ticket = await prisma.ticket.findFirst({
+    where: {
+      telegramChatId: chatId,
+      telegramTopicId: topicId,
+    },
+  });
+
+  if (!ticket) {
+    return { processed: false, skipped: true, reason: 'No matching ticket found for closed topic' };
+  }
+
+  if (ticket.status === 'CLOSED') {
+    return { processed: false, skipped: true, reason: 'Ticket already closed' };
+  }
+
+  await prisma.ticket.update({
+    where: { id: ticket.id },
+    data: { status: 'CLOSED' },
+  });
+
+  // Trigger webhook
+  await triggerWebhooks(
+    ticket.accountId,
+    ticket.id,
+    'ticket.updated',
+    {
+      ticketId: ticket.id,
+      accountId: ticket.accountId,
+      status: 'CLOSED',
+      source: 'telegram',
+    }
+  );
+
+  console.log(`Closed ticket ${ticket.id} from Telegram topic close`);
+
+  return { processed: true, skipped: false, reason: 'Ticket closed from Telegram' };
+}
+
+/**
+ * Handle a forum topic being reopened in Telegram.
+ * Reopens the corresponding ticket.
+ */
+async function handleTopicReopened(
+  chatId: string,
+  topicId: number
+): Promise<ProcessResult> {
+  const ticket = await prisma.ticket.findFirst({
+    where: {
+      telegramChatId: chatId,
+      telegramTopicId: topicId,
+    },
+  });
+
+  if (!ticket) {
+    return { processed: false, skipped: true, reason: 'No matching ticket found for reopened topic' };
+  }
+
+  if (ticket.status === 'OPEN') {
+    return { processed: false, skipped: true, reason: 'Ticket already open' };
+  }
+
+  await prisma.ticket.update({
+    where: { id: ticket.id },
+    data: { status: 'OPEN' },
+  });
+
+  // Trigger webhook
+  await triggerWebhooks(
+    ticket.accountId,
+    ticket.id,
+    'ticket.updated',
+    {
+      ticketId: ticket.id,
+      accountId: ticket.accountId,
+      status: 'OPEN',
+      source: 'telegram',
+    }
+  );
+
+  console.log(`Reopened ticket ${ticket.id} from Telegram topic reopen`);
+
+  return { processed: true, skipped: false, reason: 'Ticket reopened from Telegram' };
 }
