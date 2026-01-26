@@ -226,6 +226,19 @@ export default function WidgetFrame() {
     }
   }, [isIdle, ticketId]);
 
+  // Sync messages state with loader data after revalidation (POST request finish)
+  // This ensures we only show database messages and clears any pending duplicates
+  useEffect(() => {
+    if (data.existingTicket?.messages) {
+      setMessages(data.existingTicket.messages);
+      // Update lastMessageTimeRef to the latest message from DB
+      const dbMessages = data.existingTicket.messages;
+      if (dbMessages.length > 0) {
+        lastMessageTimeRef.current = dbMessages[dbMessages.length - 1].createdAt;
+      }
+    }
+  }, [data.existingTicket?.messages]);
+
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

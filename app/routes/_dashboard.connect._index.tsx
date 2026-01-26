@@ -81,33 +81,21 @@ export default function ConnectHub() {
           transition={{ duration: 0.3, delay: 0 }}
         >
           <Link to="/connect/slack" className="block group">
-            <Card className={`border-border shadow-sm hover:shadow-md transition-all duration-300 h-full ${discordInstallation && !slackInstallation ? 'opacity-60' : ''}`}>
+            <Card className={`border-border shadow-sm hover:shadow-md transition-all duration-300 h-full ${(discordInstallation || telegramGroup) && !slackInstallation ? 'opacity-60' : ''}`}>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 bg-[#4A154B]/10 rounded-xl group-hover:scale-105 transition-transform">
-                      <SlackIcon className="w-8 h-8 text-[#4A154B]" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">Slack</CardTitle>
-                      <CardDescription>
-                        Respond to tickets from Slack threads
-                      </CardDescription>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-[#4A154B]/10 rounded-xl group-hover:scale-105 transition-transform">
+                    <SlackIcon className="w-8 h-8 text-[#4A154B]" />
                   </div>
-                  {slackInstallation ? (
-                    <Badge variant="success" className="gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      Connected
-                    </Badge>
-                  ) : discordInstallation ? (
-                    <Badge variant="muted">Disabled</Badge>
-                  ) : (
-                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
-                  )}
+                  <div>
+                    <CardTitle className="text-lg">Slack</CardTitle>
+                    <CardDescription>
+                      Respond to tickets from Slack threads
+                    </CardDescription>
+                  </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex flex-col gap-3">
                 {slackInstallation ? (
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-[#4A154B] rounded-xl flex items-center justify-center text-white font-bold">
@@ -122,15 +110,28 @@ export default function ConnectHub() {
                       </div>
                     </div>
                   </div>
-                ) : discordInstallation ? (
+                ) : discordInstallation || telegramGroup ? (
                   <p className="text-sm text-muted-foreground">
-                    Disconnect Discord to enable Slack integration.
+                    Disconnect {discordInstallation ? 'Discord' : 'Telegram'} to enable Slack integration.
                   </p>
                 ) : (
                   <p className="text-sm text-muted-foreground">
                     Click to connect your Slack workspace.
                   </p>
                 )}
+                <div className="flex items-center justify-between mt-auto pt-2">
+                  {slackInstallation ? (
+                    <Badge variant="success" className="gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Connected
+                    </Badge>
+                  ) : discordInstallation || telegramGroup ? (
+                    <Badge variant="muted">Disabled</Badge>
+                  ) : (
+                    <span />
+                  )}
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                </div>
               </CardContent>
             </Card>
           </Link>
@@ -143,33 +144,21 @@ export default function ConnectHub() {
           transition={{ duration: 0.3, delay: 0.1 }}
         >
           <Link to="/connect/discord" className="block group">
-            <Card className={`border-border shadow-sm hover:shadow-md transition-all duration-300 h-full ${slackInstallation && !discordInstallation ? 'opacity-60' : ''}`}>
+            <Card className={`border-border shadow-sm hover:shadow-md transition-all duration-300 h-full ${(slackInstallation || telegramGroup) && !discordInstallation ? 'opacity-60' : ''}`}>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 bg-[#5865F2]/10 rounded-xl group-hover:scale-105 transition-transform">
-                      <FaDiscord className="w-8 h-8 text-[#5865F2]" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">Discord</CardTitle>
-                      <CardDescription>
-                        Respond to tickets from Discord threads
-                      </CardDescription>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-[#5865F2]/10 rounded-xl group-hover:scale-105 transition-transform">
+                    <FaDiscord className="w-8 h-8 text-[#5865F2]" />
                   </div>
-                  {discordInstallation ? (
-                    <Badge variant="success" className="gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      Connected
-                    </Badge>
-                  ) : slackInstallation ? (
-                    <Badge variant="muted">Disabled</Badge>
-                  ) : (
-                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
-                  )}
+                  <div>
+                    <CardTitle className="text-lg">Discord</CardTitle>
+                    <CardDescription>
+                      Respond to tickets from Discord threads
+                    </CardDescription>
+                  </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex flex-col gap-3">
                 {discordInstallation ? (
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-[#5865F2] rounded-xl flex items-center justify-center text-white font-bold">
@@ -184,15 +173,28 @@ export default function ConnectHub() {
                       </div>
                     </div>
                   </div>
-                ) : slackInstallation ? (
+                ) : slackInstallation || telegramGroup ? (
                   <p className="text-sm text-muted-foreground">
-                    Disconnect Slack to enable Discord integration.
+                    Disconnect {slackInstallation ? 'Slack' : 'Telegram'} to enable Discord integration.
                   </p>
                 ) : (
                   <p className="text-sm text-muted-foreground">
                     Click to connect your Discord server.
                   </p>
                 )}
+                <div className="flex items-center justify-between mt-auto pt-2">
+                  {discordInstallation ? (
+                    <Badge variant="success" className="gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Connected
+                    </Badge>
+                  ) : slackInstallation || telegramGroup ? (
+                    <Badge variant="muted">Disabled</Badge>
+                  ) : (
+                    <span />
+                  )}
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                </div>
               </CardContent>
             </Card>
           </Link>
@@ -210,29 +212,17 @@ export default function ConnectHub() {
                 className={`border-border shadow-sm hover:shadow-md transition-all duration-300 h-full ${(slackInstallation || discordInstallation) && !telegramGroup ? 'opacity-60' : ''}`}
               >
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 bg-[#0088cc]/10 rounded-xl group-hover:scale-105 transition-transform">
-                        <FaTelegram className="w-8 h-8 text-[#0088cc]" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-lg">Telegram</CardTitle>
-                        <CardDescription>Respond to tickets from forum topics</CardDescription>
-                      </div>
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-[#0088cc]/10 rounded-xl group-hover:scale-105 transition-transform">
+                      <FaTelegram className="w-8 h-8 text-[#0088cc]" />
                     </div>
-                    {telegramGroup ? (
-                      <Badge variant="success" className="gap-1">
-                        <CheckCircle2 className="w-3 h-3" />
-                        Connected
-                      </Badge>
-                    ) : slackInstallation || discordInstallation ? (
-                      <Badge variant="muted">Disabled</Badge>
-                    ) : (
-                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
-                    )}
+                    <div>
+                      <CardTitle className="text-lg">Telegram</CardTitle>
+                      <CardDescription>Respond to tickets from forum topics</CardDescription>
+                    </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex flex-col gap-3">
                   {telegramGroup ? (
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-[#0088cc] rounded-xl flex items-center justify-center text-white font-bold">
@@ -257,6 +247,19 @@ export default function ConnectHub() {
                       Click to connect your Telegram supergroup.
                     </p>
                   )}
+                  <div className="flex items-center justify-between mt-auto pt-2">
+                    {telegramGroup ? (
+                      <Badge variant="success" className="gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Connected
+                      </Badge>
+                    ) : slackInstallation || discordInstallation ? (
+                      <Badge variant="muted">Disabled</Badge>
+                    ) : (
+                      <span />
+                    )}
+                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                  </div>
                 </CardContent>
               </Card>
             </Link>
