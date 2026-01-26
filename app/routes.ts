@@ -27,6 +27,7 @@ export default [
     route("connect", "routes/_dashboard.connect._index.tsx"),
     route("connect/slack", "routes/_dashboard.connect.slack.tsx"),
     route("connect/discord", "routes/_dashboard.connect.discord.tsx"),
+    route("connect/telegram", "routes/_dashboard.connect.telegram.tsx"),
     route("widget", "routes/_dashboard.widget.tsx"),
     route("settings/webhooks", "routes/_dashboard.settings.webhooks.tsx"),
   ]),
@@ -41,6 +42,8 @@ export default [
   route("api/slack/*", "routes/api.slack.$.ts"),
   route("api/discord", "routes/api.discord.$.ts", { id: "api-discord-root" }),
   route("api/discord/*", "routes/api.discord.$.ts", { id: "api-discord-subpath" }),
+  route("api/telegram", "routes/api.telegram.$.ts", { id: "api-telegram-root" }),
+  route("api/telegram/*", "routes/api.telegram.$.ts", { id: "api-telegram-subpath" }),
   route("api/stripe", "routes/api.stripe.$.ts", { id: "api-stripe-root" }),
   route("api/stripe/*", "routes/api.stripe.$.ts", { id: "api-stripe-subpath" }),
   route("api/resend-verification", "routes/api.resend-verification.ts"),
@@ -55,6 +58,10 @@ export default [
   route("discord/install", "routes/discord.install.ts"),
   route("discord/oauth/callback", "routes/discord.oauth.callback.ts"),
   route("discord/events", "routes/discord.events.ts"),
+
+  // Telegram routes
+  route("telegram/install", "routes/telegram.install.ts"),
+  route("telegram/webhook", "routes/telegram.webhook.ts"),
 
   // Stripe routes
   route("stripe/checkout/success", "routes/stripe.checkout.success.tsx"),
