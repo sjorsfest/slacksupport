@@ -43,6 +43,7 @@ export const createTicketSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).optional(),
   email: z.string().email().optional(),
   name: z.string().optional(),
+  pendingId: z.string().optional(),
 });
 
 export const updateTicketSchema = z.object({
@@ -53,6 +54,7 @@ export const updateTicketSchema = z.object({
 
 export const createMessageSchema = z.object({
   text: z.string().min(1, 'Message is required'),
+  pendingId: z.string().optional(),
 });
 
 // Webhook schemas

@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { LoaderFunctionArgs, LinksFunction } from "react-router";
-import { useLoaderData, useFetcher } from "react-router";
+import { useLoaderData, useFetcher, useRevalidator } from "react-router";
 import { motion } from "framer-motion";
 import { Send, X, Sparkles, PartyPopper, AlertTriangle, CheckCircle2, RefreshCw, Plus } from "lucide-react";
 import { isRouteErrorResponse, useRouteError } from "react-router";
@@ -163,37 +163,35 @@ type Message = {
 
 export default function WidgetFrame() {
   const data = useLoaderData<typeof loader>();
-  const [messages, setMessages] = useState<Message[]>(
-    data.existingTicket?.messages || []
-  );
-  const [ticketId, setTicketId] = useState<string | null>(
-    data.existingTicket?.id || null
-  );
-  const [ticketStatus, setTicketStatus] = useState<"OPEN" | "CLOSED">(
-    (data.existingTicket?.status as "OPEN" | "CLOSED") || "OPEN"
-  );
+  const revalidator = useRevalidator();
+  const messageFetcher = useFetcher();
+
+  // Derive from loader (source of truth)
+  const loaderMessages: Message[] = data.existingTicket?.messages || [];
+  const ticketId = data.existingTicket?.id || null;
+  const ticketStatus = (data.existingTicket?.status as "OPEN" | "CLOSED") || "OPEN";
+
+  // Only pending messages in state
+  const [pendingMessages, setPendingMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isIdle, setIsIdle] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const idleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastActivityRef = useRef<Date>(new Date());
-  const lastMessageTimeRef = useRef<string | null>(null);
 
-  const messageFetcher = useFetcher();
-  const isPollingRef = useRef(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const idleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const prevLoaderMessagesLengthRef = useRef(loaderMessages.length);
 
   const [visitorInfo, setVisitorInfo] = useState({
     name: data.name || "",
     email: data.email || "",
   });
   const [hasSubmittedInfo, setHasSubmittedInfo] = useState(
-    // If we already have valid name and email from props, consider it submitted
     Boolean(data.name && data.email)
   );
   const [emailError, setEmailError] = useState<string | null>(null);
 
-  // Simple email validation regex
+  // Combined messages for display
+  const allMessages = [...loaderMessages, ...pendingMessages];
+
   const isValidEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
@@ -203,8 +201,7 @@ export default function WidgetFrame() {
   const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
   const POLLING_INTERVAL_MS = 2500; // 2.5 seconds
 
-  const resetIdleTimeout = useCallback(() => {
-    lastActivityRef.current = new Date();
+  const resetIdleTimeout = () => {
     if (isIdle) {
       setIsIdle(false);
     }
@@ -217,150 +214,89 @@ export default function WidgetFrame() {
       idleTimeoutRef.current = setTimeout(() => {
         console.log("Chat idle, stopping polling");
         setIsIdle(true);
-        isPollingRef.current = false;
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
-        }
       }, IDLE_TIMEOUT_MS);
     }
-  }, [isIdle, ticketId]);
-
+  };
 
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [allMessages.length]);
 
+  // Notify parent when new messages arrive from operator
   useEffect(() => {
-    if (!lastMessageTimeRef.current && messages.length > 0) {
-      lastMessageTimeRef.current = messages[messages.length - 1].createdAt;
-    }
-  }, [messages]);
-
-  // Handle message fetcher response (for sending messages)
-  useEffect(() => {
-    if (messageFetcher.data) {
-      const result = messageFetcher.data as {
-        ticketId?: string;
-        messageId?: string;
-      };
-
-      if (result.messageId) {
-        // Update the pending message with the real ID first
-        setMessages((prev) => {
-          const lastPendingIndex = [...prev]
-            .reverse()
-            .findIndex((m) => m.pending);
-          if (lastPendingIndex !== -1) {
-            const realIndex = prev.length - 1 - lastPendingIndex;
-            const newMsgs = [...prev];
-            const confirmedMessage = {
-              ...newMsgs[realIndex],
-              id: result.messageId!,
-              pending: false,
-            };
-            newMsgs[realIndex] = confirmedMessage;
-            // Update lastMessageTimeRef to prevent polling from fetching this message again
-            lastMessageTimeRef.current = confirmedMessage.createdAt;
-            return newMsgs;
-          }
-          return prev;
-        });
-      }
-
-      // Set ticketId after updating the message to ensure lastMessageTimeRef is set before polling starts
-      if (result.ticketId && !ticketId) {
-        setTicketId(result.ticketId);
+    if (loaderMessages.length > prevLoaderMessagesLengthRef.current) {
+      const newMessages = loaderMessages.slice(prevLoaderMessagesLengthRef.current);
+      const hasOperatorMessage = newMessages.some(m => m.source !== "visitor");
+      if (hasOperatorMessage) {
+        window.parent.postMessage({ type: "sw:newMessage" }, "*");
       }
     }
-  }, [messageFetcher.data, ticketId]);
+    prevLoaderMessagesLengthRef.current = loaderMessages.length;
+  }, [loaderMessages]);
 
-
-  // Start polling for new messages
-  const startPolling = useCallback(() => {
-    if (!ticketId || isPollingRef.current) return;
-
-    setIsIdle(false);
-    isPollingRef.current = true;
-    resetIdleTimeout();
-
-    const poll = async () => {
-      try {
-        const since = lastMessageTimeRef.current || "";
-        const params = new URLSearchParams();
-        if (since) params.set("since", since);
-
-        const response = await fetch(
-          `/api/tickets/${ticketId}/messages?${params.toString()}`
-        );
-
-        if (!response.ok) {
-          console.error(`Polling failed: ${response.status}`);
-          return;
-        }
-
-        const pollData = await response.json();
-        const newMessages = pollData.messages || [];
-
-        // Check if ticket status changed
-        if (pollData.ticketStatus && pollData.ticketStatus !== ticketStatus) {
-          setTicketStatus(pollData.ticketStatus);
-          // If ticket was closed, stop polling
-          if (pollData.ticketStatus === "CLOSED") {
-            isPollingRef.current = false;
-            if (pollingIntervalRef.current) {
-              clearInterval(pollingIntervalRef.current);
-              pollingIntervalRef.current = null;
-            }
-            return;
-          }
-        }
-
-        if (newMessages.length > 0) {
-          lastMessageTimeRef.current =
-            newMessages[newMessages.length - 1].createdAt;
-
-          setMessages((prev) => {
-            const newMsgs = newMessages.filter(
-              (m: Message) => !prev.some((p) => p.id === m.id)
-            );
-            if (newMsgs.length > 0) {
-              window.parent.postMessage({ type: "sw:newMessage" }, "*");
-              return [...prev, ...newMsgs];
-            }
-            return prev;
-          });
-        }
-      } catch (error) {
-        console.error("Polling error:", error);
-      }
-    };
-
-    // Initial poll
-    poll();
-
-    // Set up interval
-    pollingIntervalRef.current = setInterval(poll, POLLING_INTERVAL_MS);
-  }, [ticketId, ticketStatus, resetIdleTimeout]);
-
-  // Start/stop polling when ticketId changes
+  // Reconcile: remove pending messages that now exist in loader data
+  // When we find a match, also remove all earlier pending messages since they
+  // must have been processed too (handles race condition when fetcher.data gets overwritten)
   useEffect(() => {
-    if (ticketId && !isPollingRef.current) {
-      startPolling();
-    }
+    if (loaderMessages.length === 0) return;
+    setPendingMessages(prev => {
+      // Find the last index where the pending message ID exists in loader
+      let lastMatchIndex = -1;
+      for (let i = 0; i < prev.length; i++) {
+        if (loaderMessages.some(m => m.id === prev[i].id)) {
+          lastMatchIndex = i;
+        }
+      }
 
+      // Remove all messages up to and including the last match
+      if (lastMatchIndex >= 0) {
+        return prev.slice(lastMatchIndex + 1);
+      }
+      return prev;
+    });
+  }, [loaderMessages]);
+
+  // Handle fetcher response - update pending message with real ID
+  useEffect(() => {
+    const result = messageFetcher.data as {
+      messageId?: string;
+      pendingId?: string;
+      ticketId?: string;
+    } | undefined;
+
+    if (result?.messageId && result?.pendingId) {
+      setPendingMessages(prev =>
+        prev.map(m =>
+          m.id === result.pendingId
+            ? { ...m, id: result.messageId!, pending: false }
+            : m
+        )
+      );
+    }
+  }, [messageFetcher.data]);
+
+  // Polling via revalidator
+  useEffect(() => {
+    if (!ticketId || isIdle || ticketStatus === "CLOSED") return;
+
+    const interval = setInterval(() => {
+      if (revalidator.state === "idle") {
+        revalidator.revalidate();
+      }
+    }, POLLING_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [ticketId, isIdle, ticketStatus, revalidator]);
+
+  // Cleanup idle timeout on unmount
+  useEffect(() => {
     return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
       if (idleTimeoutRef.current) {
         clearTimeout(idleTimeoutRef.current);
       }
-      isPollingRef.current = false;
     };
-  }, [ticketId, startPolling]);
+  }, []);
 
   // Notify parent frame that widget is ready
   useEffect(() => {
@@ -368,12 +304,8 @@ export default function WidgetFrame() {
   }, []);
 
   const handleContinueChat = () => {
-    if (ticketId) {
-      // Force reset to allow startPolling to restart
-      isPollingRef.current = false;
-      // Use setTimeout to ensure state update is processed before calling startPolling
-      setTimeout(() => startPolling(), 0);
-    }
+    setIsIdle(false);
+    resetIdleTimeout();
   };
 
   const handleClose = () => {
@@ -389,10 +321,7 @@ export default function WidgetFrame() {
       });
 
       if (response.ok) {
-        setTicketStatus("OPEN");
-        // Restart polling
-        isPollingRef.current = false;
-        setTimeout(() => startPolling(), 0);
+        revalidator.revalidate();
       } else {
         console.error("Failed to reopen ticket");
       }
@@ -402,28 +331,19 @@ export default function WidgetFrame() {
   };
 
   const handleStartNewTicket = () => {
-    // Reset all state to start fresh
-    setTicketId(null);
-    setTicketStatus("OPEN");
-    setMessages([]);
-    lastMessageTimeRef.current = null;
-    isPollingRef.current = false;
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
+    setPendingMessages([]);
+    // Navigate to clear the ticket from URL/loader
+    window.location.reload();
   };
 
   const handleInfoSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setEmailError(null);
 
-    // Validate name
     if (!visitorInfo.name.trim()) {
       return;
     }
 
-    // Validate email
     if (!visitorInfo.email.trim()) {
       setEmailError("Please enter your email");
       return;
@@ -434,11 +354,10 @@ export default function WidgetFrame() {
       return;
     }
 
-    // All valid - submit the form
     setHasSubmittedInfo(true);
   };
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = () => {
     const text = inputValue.trim();
     if (!text) return;
 
@@ -453,38 +372,34 @@ export default function WidgetFrame() {
       createdAt: new Date().toISOString(),
       pending: true,
     };
-    setMessages((prev) => [...prev, pendingMessage]);
+    setPendingMessages(prev => [...prev, pendingMessage]);
 
-    try {
-      if (!ticketId) {
-        messageFetcher.submit(
-          {
-            accountId: data.accountId!,
-            visitorId: data.visitorId,
-            message: text,
-            email: visitorInfo.email,
-            name: visitorInfo.name,
-            metadata: data.metadata || undefined,
-          },
-          {
-            method: "POST",
-            action: "/api/tickets",
-            encType: "application/json",
-          }
-        );
-      } else {
-        messageFetcher.submit(
-          { text },
-          {
-            method: "POST",
-            action: `/api/tickets/${ticketId}/messages`,
-            encType: "application/json",
-          }
-        );
-      }
-    } catch (error) {
-      console.error("Error sending message:", error);
-      setMessages((prev) => prev.filter((m) => m.id !== pendingId));
+    if (!ticketId) {
+      messageFetcher.submit(
+        {
+          accountId: data.accountId!,
+          visitorId: data.visitorId,
+          message: text,
+          email: visitorInfo.email,
+          name: visitorInfo.name,
+          metadata: data.metadata || undefined,
+          pendingId,
+        },
+        {
+          method: "POST",
+          action: "/api/tickets",
+          encType: "application/json",
+        }
+      );
+    } else {
+      messageFetcher.submit(
+        { text, pendingId },
+        {
+          method: "POST",
+          action: `/api/tickets/${ticketId}/messages`,
+          encType: "application/json",
+        }
+      );
     }
   };
 
@@ -520,7 +435,7 @@ export default function WidgetFrame() {
 
   const groupedMessages: { date: string; messages: Message[] }[] = [];
   let currentDate = "";
-  for (const msg of messages) {
+  for (const msg of allMessages) {
     const msgDate = formatDate(msg.createdAt);
     if (msgDate !== currentDate) {
       currentDate = msgDate;
@@ -652,9 +567,9 @@ export default function WidgetFrame() {
                 {/* Messages Area */}
                 <div className={cn(
                   "flex-1 p-4 space-y-6 scroll-smooth",
-                  messages.length === 0 ? "overflow-hidden" : "overflow-y-auto"
+                  allMessages.length === 0 ? "overflow-hidden" : "overflow-y-auto"
                 )}>
-                  {messages.length === 0 && (
+                  {allMessages.length === 0 && (
                     <div className="h-full flex items-center justify-center text-center p-4">
                       <motion.div
                         initial={{ scale: 0.8, opacity: 0 }}
@@ -814,7 +729,7 @@ export default function WidgetFrame() {
                         size="icon"
                         onClick={handleSendMessage}
                         disabled={
-                          !inputValue.trim() || messageFetcher.state !== "idle"
+                          !inputValue.trim() || messageFetcher.state !== "idle" || pendingMessages.length > 0
                         }
                         className={cn(
                           "absolute right-1.5 bottom-1.5 h-10 w-10 rounded-full transition-all duration-200 shadow-sm border-0",

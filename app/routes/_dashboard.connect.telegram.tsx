@@ -301,7 +301,7 @@ export default function TelegramIntegration() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="text-left bg-gray-50 rounded-xl p-4 space-y-3 max-w-md mx-auto">
-                <h4 className="font-medium text-foreground">Setup Instructions:</h4>
+                <h3 className="font-medium text-secondary-300">Setup Instructions:</h3>
                 <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
                   <li>Create a supergroup in Telegram (or use existing)</li>
                   <li>Enable "Topics" in group settings</li>
@@ -310,6 +310,9 @@ export default function TelegramIntegration() {
                   </li>
                   <li>Grant "Manage Topics" permission</li>
                   <li>Enter your group's Chat ID below</li>
+                  <li>
+                    The ID must start with <span className="font-mono text-foreground">-100</span> (e.g., if you get -54328509, enter -10054328509)
+                  </li>
                 </ol>
               </div>
 
@@ -332,7 +335,7 @@ export default function TelegramIntegration() {
                 </div>
                 {addError && <p className="text-sm text-rose-600">{addError}</p>}
                 <p className="text-xs text-muted-foreground">
-                  Tip: Get your Chat ID by adding @userinfobot to your group
+                  Tip: Get your Chat ID by adding <span className="font-mono text-foreground">@userinfobot</span> to your group.
                 </p>
               </div>
             </CardContent>

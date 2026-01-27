@@ -20,6 +20,7 @@ export default [
       route("onboarding/connect", "routes/_dashboard.onboarding.connect.tsx"),
       route("onboarding/connect/slack", "routes/_dashboard.onboarding.connect.slack.tsx"),
       route("onboarding/connect/discord", "routes/_dashboard.onboarding.connect.discord.tsx"),
+      route("onboarding/connect/telegram", "routes/_dashboard.onboarding.connect.telegram.tsx"),
       route("onboarding/embed", "routes/_dashboard.onboarding.embed.tsx"),
     ]),
     route("tickets", "routes/_dashboard.tickets._index.tsx"),

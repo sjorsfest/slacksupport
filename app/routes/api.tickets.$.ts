@@ -357,10 +357,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
         message.id
       );
 
-      return Response.json({ 
-        ticketId: ticket.id, 
+      return Response.json({
+        ticketId: ticket.id,
         messageId: message.id,
         visitorId: visitor.id,
+        pendingId: data.pendingId,
       });
     } catch (error) {
       console.error('Create ticket error:', error);
@@ -605,7 +606,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         message.id
       );
 
-      return Response.json({ messageId: message.id });
+      return Response.json({ messageId: message.id, pendingId: data.pendingId });
     } catch (error) {
       console.error('Send message error:', error);
       if (error instanceof Error) {
