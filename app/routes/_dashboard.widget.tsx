@@ -12,6 +12,8 @@ import {
   FileCode,
   Atom,
   AlertTriangle,
+  Clock,
+  ArrowRight,
 } from "lucide-react";
 
 import { requireUser } from "~/lib/auth.server";
@@ -37,7 +39,7 @@ import { CodeBlock } from "~/components/ui/code-block";
 export async function loader({ request }: LoaderFunctionArgs) {
   const user = await requireUser(request);
 
-  const [account, widgetConfig] = await Promise.all([
+  const [account, widgetConfig, subscription] = await Promise.all([
     prisma.account.findUnique({
       where: { id: user.accountId },
       select: { id: true, allowedDomains: true },
@@ -45,9 +47,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
     prisma.widgetConfig.findUnique({
       where: { accountId: user.accountId },
     }),
+    prisma.subscription.findUnique({
+      where: { accountId: user.accountId },
+      select: { stripeProductId: true, status: true },
+    }),
   ]);
 
   const baseUrl = settings.BASE_URL;
+
+  const isFreemiumUser = subscription &&
+    ['active', 'trialing'].includes(subscription.status) &&
+    subscription.stripeProductId === settings.STRIPE_FREEMIUM_PRODUCT_ID;
 
   return {
     accountId: user.accountId,
@@ -58,13 +68,34 @@ export async function loader({ request }: LoaderFunctionArgs) {
       greetingText: "What's cooking? 🍳",
       companyName: "Donkey Support",
       controlledByHost: false,
+      officeHoursStart: null,
+      officeHoursEnd: null,
+      officeHoursTimezone: "UTC",
     },
     baseUrl,
+    isFreemiumUser: !!isFreemiumUser,
   };
 }
 
+// Common timezone options
+const TIMEZONE_OPTIONS = [
+  { value: "UTC", label: "UTC" },
+  { value: "America/New_York", label: "Eastern Time (US)" },
+  { value: "America/Chicago", label: "Central Time (US)" },
+  { value: "America/Denver", label: "Mountain Time (US)" },
+  { value: "America/Los_Angeles", label: "Pacific Time (US)" },
+  { value: "Europe/London", label: "London (UK)" },
+  { value: "Europe/Paris", label: "Paris (CET)" },
+  { value: "Europe/Amsterdam", label: "Amsterdam (CET)" },
+  { value: "Europe/Berlin", label: "Berlin (CET)" },
+  { value: "Asia/Tokyo", label: "Tokyo (Japan)" },
+  { value: "Asia/Shanghai", label: "Shanghai (China)" },
+  { value: "Asia/Singapore", label: "Singapore" },
+  { value: "Australia/Sydney", label: "Sydney (Australia)" },
+];
+
 export default function WidgetSettings() {
-  const { accountId, allowedDomains, config, baseUrl } =
+  const { accountId, allowedDomains, config, baseUrl, isFreemiumUser } =
     useLoaderData<typeof loader>();
   const [primaryColor, setPrimaryColor] = useState(config.primaryColor);
   const [accentColor, setAccentColor] = useState(config.accentColor);
@@ -80,6 +111,20 @@ export default function WidgetSettings() {
     "settings"
   );
   const [codeType, setCodeType] = useState<"html" | "react">("html");
+
+  // Office hours state
+  const [officeHoursEnabled, setOfficeHoursEnabled] = useState(
+    Boolean(config.officeHoursStart && config.officeHoursEnd)
+  );
+  const [officeHoursStart, setOfficeHoursStart] = useState(
+    config.officeHoursStart || "09:00"
+  );
+  const [officeHoursEnd, setOfficeHoursEnd] = useState(
+    config.officeHoursEnd || "17:00"
+  );
+  const [officeHoursTimezone, setOfficeHoursTimezone] = useState(
+    config.officeHoursTimezone || "UTC"
+  );
 
   const configFetcher = useFetcher();
   const domainsFetcher = useFetcher();
@@ -264,6 +309,9 @@ function App() {
         greetingText,
         companyName: companyName || null,
         controlledByHost,
+        officeHoursStart: officeHoursEnabled ? officeHoursStart : null,
+        officeHoursEnd: officeHoursEnabled ? officeHoursEnd : null,
+        officeHoursTimezone: officeHoursEnabled ? officeHoursTimezone : null,
       },
       {
         method: "PUT",
@@ -425,6 +473,107 @@ function App() {
             </CardContent>
           </Card>
 
+          <Card className="border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300">
+            <CardHeader>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Clock className="w-5 h-5 text-purple-600" />
+                </div>
+                <CardTitle>Office Hours</CardTitle>
+              </div>
+              <CardDescription>
+                Let visitors know when you're available to chat.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-4 p-3 bg-muted/30 rounded-lg">
+                <div>
+                  <Label className="text-sm font-medium">
+                    Enable office hours
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Show visitors when you're available
+                  </p>
+                </div>
+                <Switch
+                  checked={officeHoursEnabled}
+                  onChange={(e) => setOfficeHoursEnabled(e.target.checked)}
+                />
+              </div>
+
+              {officeHoursEnabled && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-4"
+                >
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Start Time</Label>
+                      <Input
+                        type="time"
+                        value={officeHoursStart}
+                        onChange={(e) => setOfficeHoursStart(e.target.value)}
+                        className="bg-muted/30"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>End Time</Label>
+                      <Input
+                        type="time"
+                        value={officeHoursEnd}
+                        onChange={(e) => setOfficeHoursEnd(e.target.value)}
+                        className="bg-muted/30"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Timezone</Label>
+                    <select
+                      value={officeHoursTimezone}
+                      onChange={(e) => setOfficeHoursTimezone(e.target.value)}
+                      className="w-full h-10 px-3 rounded-md border border-input bg-muted/30 text-sm"
+                    >
+                      {TIMEZONE_OPTIONS.map((tz) => (
+                        <option key={tz.value} value={tz.value}>
+                          {tz.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded-lg">
+                    Outside these hours, visitors will see a message that you're
+                    away but can still leave messages.
+                  </p>
+                </motion.div>
+              )}
+
+              <Button
+                onClick={handleSaveConfig}
+                disabled={isSavingConfig}
+                className={cn(
+                  "w-full font-bold transition-all duration-300",
+                  saved
+                    ? "bg-green-500 hover:bg-green-600 text-white"
+                    : "bg-secondary hover:bg-secondary/90 text-white"
+                )}
+              >
+                {saved ? (
+                  <span className="flex items-center gap-2">
+                    <Check className="w-4 h-4" /> Saved!
+                  </span>
+                ) : isSavingConfig ? (
+                  "Saving..."
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
           <Card className="border-border/50 shadow-sm">
             <CardHeader>
               <div className="flex items-center gap-2 mb-1">
@@ -432,9 +581,19 @@ function App() {
                   <Globe className="w-5 h-5 text-blue-600" />
                 </div>
                 <CardTitle>Allowed Domains</CardTitle>
+                {isFreemiumUser && (
+                  <Badge variant="secondary" className="ml-auto text-xs">
+                    {domains.length}/3 domains
+                  </Badge>
+                )}
               </div>
               <CardDescription>
                 Security first! Whitelist domains where your widget can live.
+                {isFreemiumUser && (
+                  <span className="block text-xs mt-1 text-amber-600">
+                    Freemium accounts can have 1-3 domains.
+                  </span>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -447,16 +606,51 @@ function App() {
                   }
                   placeholder="example.com"
                   className="bg-muted/30"
+                  disabled={isFreemiumUser && domains.length >= 3}
                 />
-                <Button variant="secondary" onClick={addDomain}>
+                <Button
+                  variant="secondary"
+                  onClick={addDomain}
+                  disabled={isFreemiumUser && domains.length >= 3}
+                >
                   Add Domain
                 </Button>
               </div>
 
+              {isFreemiumUser && domains.length >= 3 && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mb-4 border border-purple-200 bg-purple-50 rounded-xl p-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-3">
+                      <Sparkles className="w-5 h-5 text-purple-600 shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-purple-800">
+                          Domain limit reached
+                        </p>
+                        <p className="text-sm text-purple-700">
+                          Upgrade to add unlimited domains.
+                        </p>
+                      </div>
+                    </div>
+                    <a
+                      href="/upgrade"
+                      className="flex items-center gap-1 text-sm font-medium text-purple-700 hover:text-purple-900"
+                    >
+                      Upgrade <ArrowRight className="w-4 h-4" />
+                    </a>
+                  </div>
+                </motion.div>
+              )}
+
               <div className="flex flex-wrap gap-2 min-h-[40px]">
                 <AnimatePresence mode="popLayout">
                   {domains.length > 0 ? (
-                    domains.map((domain) => (
+                    domains.map((domain) => {
+                      const canRemove = !(isFreemiumUser && domains.length <= 1);
+                      return (
                       <motion.div
                         key={domain}
                         initial={{ opacity: 0, scale: 0.8 }}
@@ -470,8 +664,15 @@ function App() {
                         >
                           {domain}
                           <button
-                            onClick={() => removeDomain(domain)}
-                            className="p-0.5 hover:bg-background rounded-full transition-colors text-muted-foreground hover:text-destructive"
+                            onClick={() => canRemove && removeDomain(domain)}
+                            disabled={!canRemove}
+                            title={!canRemove ? "Freemium accounts require at least 1 domain" : "Remove domain"}
+                            className={cn(
+                              "p-0.5 rounded-full transition-colors",
+                              canRemove
+                                ? "hover:bg-background text-muted-foreground hover:text-destructive"
+                                : "opacity-30 cursor-not-allowed text-muted-foreground"
+                            )}
                           >
                             <svg
                               className="w-3 h-3"
@@ -489,7 +690,7 @@ function App() {
                           </button>
                         </Badge>
                       </motion.div>
-                    ))
+                    );})
                   ) : (
                     <motion.div
                       initial={{ opacity: 0 }}

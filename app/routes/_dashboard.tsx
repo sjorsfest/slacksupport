@@ -94,7 +94,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     account,
     subscription,
     baseUrl: process.env.BASE_URL || "",
-    supportAccountId: "cml9cp40w0000e2lw5m0t6cfj" ||process.env.SUPPORT_ACCOUNT_ID || "",
+    supportAccountId: process.env.SUPPORT_ACCOUNT_ID || "",
     isPaidUser,
     isFreemiumUser,
   };

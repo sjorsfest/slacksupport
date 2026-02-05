@@ -3,6 +3,7 @@ import { prisma } from '~/lib/db.server';
 import { requireUser } from '~/lib/auth.server';
 import { updateAccountSchema, updateWidgetConfigSchema, updateAllowedDomainsSchema } from '~/types/schemas';
 import { parseRequest } from '~/lib/request.server';
+import { settings } from '~/lib/settings.server';
 
 /**
  * GET /api/account - Get account info
@@ -97,6 +98,29 @@ export async function action({ request, params }: ActionFunctionArgs) {
     if (path === 'allowed-domains') {
       const { domains } = await parseRequest(request, updateAllowedDomainsSchema);
 
+      const subscription = await prisma.subscription.findUnique({
+        where: { accountId: user.accountId },
+        select: { stripeProductId: true, status: true },
+      });
+
+      const isFreemium = subscription &&
+        ['active', 'trialing'].includes(subscription.status) &&
+        subscription.stripeProductId === settings.STRIPE_FREEMIUM_PRODUCT_ID;
+
+      if (isFreemium && domains.length > 3) {
+        return Response.json(
+          { error: 'Freemium accounts are limited to 3 domains. Upgrade to add more.' },
+          { status: 400 }
+        );
+      }
+
+      if (isFreemium && domains.length < 1) {
+        return Response.json(
+          { error: 'Freemium accounts must have at least 1 allowed domain for security.' },
+          { status: 400 }
+        );
+      }
+
       const account = await prisma.account.update({
         where: { id: user.accountId },
         data: { allowedDomains: domains },
@@ -113,4 +137,3 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-

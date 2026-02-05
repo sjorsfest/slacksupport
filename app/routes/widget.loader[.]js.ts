@@ -419,6 +419,29 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
   \`;
   shadow.appendChild(styles);
+
+  function normalizeHexColor(value) {
+    if (!value || typeof value !== 'string') return null;
+    var hex = value.trim().toLowerCase();
+    if (hex.charAt(0) !== '#') return null;
+    hex = hex.slice(1);
+    if (hex.length === 3) {
+      hex = hex.charAt(0) + hex.charAt(0) + hex.charAt(1) + hex.charAt(1) + hex.charAt(2) + hex.charAt(2);
+    }
+    if (hex.length !== 6) return null;
+    return '#' + hex;
+  }
+
+  function setAccentColor(value) {
+    if (!container || !value) return;
+    var normalized = normalizeHexColor(value);
+    if (normalized) {
+      container.style.setProperty('--sw-accent', normalized);
+      container.style.setProperty('--sw-accent-light', normalized + '33');
+      return;
+    }
+    container.style.setProperty('--sw-accent', value);
+  }
   
   // Create button
   button = document.createElement('button');
@@ -578,6 +601,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
         break;
       case 'sw:ready':
         // Widget frame is ready
+        if (data.accentColor) {
+          setAccentColor(data.accentColor);
+        }
         break;
     }
   });

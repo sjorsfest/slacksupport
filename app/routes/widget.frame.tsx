@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { LoaderFunctionArgs, LinksFunction } from "react-router";
 import { useLoaderData, useFetcher, useRevalidator } from "react-router";
 import { motion } from "framer-motion";
-import { Send, X, Sparkles, PartyPopper, AlertTriangle, CheckCircle2, RefreshCw, Plus } from "lucide-react";
+import { Send, X, Sparkles, PartyPopper, AlertTriangle, CheckCircle2, RefreshCw, Plus, Moon } from "lucide-react";
 import { isRouteErrorResponse, useRouteError } from "react-router";
 
 import { prisma } from "~/lib/db.server";
@@ -69,26 +69,36 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const referer = request.headers.get("Referer");
     const origin = request.headers.get("Origin");
 
-    // Get the domain from referer or origin header
-    let requestDomain: string | null = null;
+    // Get the host (includes port when present) from referer or origin header
+    let requestHost: string | null = null;
     try {
       if (referer) {
-        requestDomain = new URL(referer).hostname;
+        requestHost = new URL(referer).host;
       } else if (origin) {
-        requestDomain = new URL(origin).hostname;
+        requestHost = new URL(origin).host;
       }
     } catch {
       // Invalid URL in headers
     }
 
-    if (!requestDomain) {
+    if (!requestHost) {
       throw new Response("ORIGIN_NOT_VERIFIED", { status: 403 });
     }
 
     // Check if the request domain matches any allowed domain
     const isAllowed = allowedDomains.some((allowed) => {
-      // Exact match or subdomain match (e.g., "example.com" allows "sub.example.com")
-      return requestDomain === allowed || requestDomain.endsWith(`.${allowed}`);
+      const normalizedAllowed = allowed.trim().toLowerCase().replace(/^https?:\/\//, "").split("/")[0];
+      const normalizedRequest = requestHost.toLowerCase();
+
+      // Exact host match (supports ports, e.g., "localhost:5173")
+      if (normalizedRequest === normalizedAllowed) return true;
+
+      // Subdomain match only when allowed has no port
+      if (!normalizedAllowed.includes(":")) {
+        return normalizedRequest === normalizedAllowed || normalizedRequest.endsWith(`.${normalizedAllowed}`);
+      }
+
+      return false;
     });
 
     if (!isAllowed) {
@@ -143,6 +153,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
       accentColor: widgetConfig.accentColor,
       greetingText: widgetConfig.greetingText,
       companyName: widgetConfig.companyName || widgetConfig.account.name,
+      officeHoursStart: widgetConfig.officeHoursStart,
+      officeHoursEnd: widgetConfig.officeHoursEnd,
+      officeHoursTimezone: widgetConfig.officeHoursTimezone,
     },
     existingTicket: existingTicket
       ? {
@@ -172,6 +185,39 @@ type Message = {
   telegramUserName?: string | null;
   pending?: boolean;
 };
+
+function getOfficeHoursStatus(config: {
+  officeHoursStart?: string | null;
+  officeHoursEnd?: string | null;
+  officeHoursTimezone?: string | null;
+}): { isOpen: boolean; opensAt?: string; closesAt?: string; timezone?: string } {
+  // If no office hours set, always open
+  if (!config.officeHoursStart || !config.officeHoursEnd) {
+    return { isOpen: true };
+  }
+
+  // Get current time in configured timezone
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: config.officeHoursTimezone || "UTC",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const currentTime = formatter.format(now);
+
+  // Compare times (HH:MM string comparison works for 24h format)
+  const isOpen =
+    currentTime >= config.officeHoursStart &&
+    currentTime < config.officeHoursEnd;
+
+  return {
+    isOpen,
+    opensAt: config.officeHoursStart,
+    closesAt: config.officeHoursEnd,
+    timezone: config.officeHoursTimezone || "UTC",
+  };
+}
 
 export default function WidgetFrame() {
   const data = useLoaderData<typeof loader>();
@@ -203,6 +249,9 @@ export default function WidgetFrame() {
 
   // Combined messages for display
   const allMessages = [...loaderMessages, ...pendingMessages];
+
+  // Office hours status
+  const officeStatus = getOfficeHoursStatus(data.config);
 
   const isValidEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -312,8 +361,14 @@ export default function WidgetFrame() {
 
   // Notify parent frame that widget is ready
   useEffect(() => {
-    window.parent.postMessage({ type: "sw:ready" }, "*");
-  }, []);
+    window.parent.postMessage(
+      {
+        type: "sw:ready",
+        accentColor: data.config.accentColor,
+      },
+      "*"
+    );
+  }, [data.config.accentColor]);
 
   const handleContinueChat = () => {
     setIsIdle(false);
@@ -588,16 +643,38 @@ export default function WidgetFrame() {
                         animate={{ scale: 1, opacity: 1 }}
                         className="bg-white px-5 py-4 rounded-2xl shadow-sm border border-slate-100"
                       >
-                        <div className="text-2xl mb-2">👋</div>
-                        <p
-                          className="font-bold mb-1"
-                          style={{ color: data.config.accentColor }}
-                        >
-                          Hi there!
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {data.config.greetingText}
-                        </p>
+                        {officeStatus.isOpen ? (
+                          <>
+                            <div className="text-2xl mb-2">👋</div>
+                            <p
+                              className="font-bold mb-1"
+                              style={{ color: data.config.accentColor }}
+                            >
+                              Hi there!
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {data.config.greetingText}
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-10 h-10 mx-auto mb-3 bg-slate-100 rounded-full flex items-center justify-center">
+                              <Moon className="w-5 h-5 text-slate-500" />
+                            </div>
+                            <p
+                              className="font-bold mb-1"
+                              style={{ color: data.config.accentColor }}
+                            >
+                              We're currently away
+                            </p>
+                            <p className="text-xs text-slate-500 mb-2">
+                              We'll be back at {officeStatus.opensAt}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              Leave a message and we'll get back to you!
+                            </p>
+                          </>
+                        )}
                       </motion.div>
                     </div>
                   )}
