@@ -7,13 +7,14 @@ export default function OnboardingLayout() {
   const pathname = location.pathname;
   const isEmbed = pathname.startsWith("/onboarding/embed");
   const showProgress =
-    pathname === "/onboarding/connect" ||
+    pathname === "/onboarding/settings" ||
     pathname === "/onboarding/embed";
 
-  const steps = ["Start", "Connect", "Embed"];
+  const steps = ["Start", "Settings", "Connect", "Embed"];
   const currentStepIndex = (() => {
-    if (pathname.startsWith("/onboarding/connect")) return 1;
-    if (pathname.startsWith("/onboarding/embed")) return 2;
+    if (pathname.startsWith("/onboarding/settings")) return 1;
+    if (pathname.startsWith("/onboarding/connect")) return 2;
+    if (pathname.startsWith("/onboarding/embed")) return 3;
     return 0;
   })();
   const progressPercent = Math.min(

@@ -16,7 +16,8 @@ export default [
   layout("routes/_dashboard.tsx", [
     layout("routes/_dashboard.onboarding.tsx", [
       route("onboarding", "routes/_dashboard.onboarding._index.tsx"),
-      route("onboarding/subscription", "routes/_dashboard.onboarding.subscription.tsx"),
+      route("onboarding/settings", "routes/_dashboard.onboarding.settings.tsx"),
+      route("onboarding/domains", "routes/_dashboard.onboarding.domains.tsx"),
       route("onboarding/connect", "routes/_dashboard.onboarding.connect.tsx"),
       route("onboarding/connect/slack", "routes/_dashboard.onboarding.connect.slack.tsx"),
       route("onboarding/connect/discord", "routes/_dashboard.onboarding.connect.discord.tsx"),
@@ -30,6 +31,7 @@ export default [
     route("connect/discord", "routes/_dashboard.connect.discord.tsx"),
     route("connect/telegram", "routes/_dashboard.connect.telegram.tsx"),
     route("widget", "routes/_dashboard.widget.tsx"),
+    route("settings", "routes/_dashboard.settings.tsx"),
     route("settings/webhooks", "routes/_dashboard.settings.webhooks.tsx"),
     route("upgrade", "routes/_dashboard.upgrade.tsx"),
   ]),

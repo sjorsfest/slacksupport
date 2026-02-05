@@ -9,7 +9,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   if (!sessionId) {
     console.error('No session_id provided to checkout success');
-    return redirect('/onboarding/subscription?error=missing_session');
+    return redirect('/upgrade?error=missing_session');
   }
 
   try {
@@ -20,7 +20,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     if (!session.metadata?.accountId) {
       console.error('No accountId in session metadata', sessionId);
-      return redirect('/onboarding/subscription?error=invalid_session');
+      return redirect('/upgrade?error=invalid_session');
     }
 
     const accountId = session.metadata.accountId;
@@ -28,7 +28,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     if (!subscription) {
       console.error('No subscription in checkout session', sessionId);
-      return redirect('/onboarding/subscription?error=no_subscription');
+      return redirect('/upgrade?error=no_subscription');
     }
 
     const subscriptionItem = subscription.items.data[0];
@@ -66,7 +66,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return redirect('/onboarding/connect');
   } catch (error) {
     console.error('Error processing checkout success:', error);
-    return redirect('/onboarding/subscription?error=processing_failed');
+    return redirect('/upgrade?error=processing_failed');
   }
 }
 

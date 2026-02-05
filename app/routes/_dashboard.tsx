@@ -17,6 +17,7 @@ import {
   LogOut,
   Slack,
   CreditCard,
+  Settings,
 } from "lucide-react";
 import { FaDiscord } from "react-icons/fa";
 
@@ -24,6 +25,7 @@ import { requireUser } from "~/lib/auth.server";
 import { authClient } from "~/lib/auth-client";
 import { prisma } from "~/lib/db.server";
 import { settings } from "~/lib/settings.server";
+import { ensureFreemiumSubscription } from "~/lib/subscription.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
@@ -36,10 +38,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const isOnboardingRoute = url.pathname.startsWith('/onboarding');
 
-  const subscription = await prisma.subscription.findUnique({
+  let subscription = await prisma.subscription.findUnique({
     where: { accountId: user.accountId },
   });
-  const hasActiveSubscription = !!subscription && ['active', 'trialing'].includes(subscription.status);
+
+  if (!subscription) {
+    subscription = await ensureFreemiumSubscription({
+      accountId: user.accountId,
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+    });
+  }
 
   // isPaidUser is the primary check - paid product takes precedence
   const isPaidUser = hasActiveSubscription &&
@@ -48,28 +58,34 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // isFreemiumUser is derived (only if active but not paid)
   const isFreemiumUser = hasActiveSubscription && !isPaidUser;
 
-  const account = await prisma.account.findUnique({
-    where: { id: user.accountId },
-    include: {
-      slackInstallation: {
-        select: { slackTeamName: true },
-      },
-      discordInstallation: {
-        select: { discordGuildName: true },
-      },
-      telegramGroupConfigs: {
-        select: { id: true },
-        take: 1,
-      },
-      _count: {
-        select: {
-          tickets: {
-            where: { status: "OPEN" },
+  const [account, widgetConfig] = await Promise.all([
+    prisma.account.findUnique({
+      where: { id: user.accountId },
+      include: {
+        slackInstallation: {
+          select: { slackTeamName: true },
+        },
+        discordInstallation: {
+          select: { discordGuildName: true },
+        },
+        telegramGroupConfigs: {
+          select: { id: true },
+          take: 1,
+        },
+        _count: {
+          select: {
+            tickets: {
+              where: { status: "OPEN" },
+            },
           },
         },
       },
-    },
-  });
+    }),
+    prisma.widgetConfig.findUnique({
+      where: { accountId: user.accountId },
+      select: { officeHoursStart: true, officeHoursEnd: true },
+    }),
+  ]);
 
   // Check if user has completed onboarding (has any integration connected)
   const hasAnyIntegration = !!(
@@ -77,15 +93,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
     account?.discordInstallation ||
     (account?.telegramGroupConfigs && account.telegramGroupConfigs.length > 0)
   );
+  const hasSettingsConfigured = Boolean(
+    (account?.allowedDomains && account.allowedDomains.length > 0) ||
+      (widgetConfig?.officeHoursStart && widgetConfig?.officeHoursEnd)
+  );
 
   if (!isOnboardingRoute) {
-    if (!hasActiveSubscription) {
-      // No subscription at all - redirect to subscription page
-      throw redirect('/onboarding/subscription');
-    }
+
     if (!hasAnyIntegration) {
-      // Has subscription but no integration - redirect to connect page
-      throw redirect('/onboarding/connect');
+      // Has subscription but no integration - start with settings first
+      throw redirect(hasSettingsConfigured ? '/onboarding/connect' : '/onboarding/settings');
     }
   }
 
@@ -108,11 +125,13 @@ type NavItem = {
   external?: boolean;
   isUpgrade?: boolean;
   proOnly?: boolean;
+  matchExact?: boolean;
 };
 
 const baseNavItems: NavItem[] = [
   { path: "/tickets", label: "Tickets", icon: Ticket, color: "text-blue-500" },
   { path: "/connect", label: "Connect", icon: Plug, color: "text-purple-500" },
+  { path: "/settings", label: "Settings", icon: Settings, color: "text-amber-500", matchExact: true },
   { path: "/widget", label: "Widget", icon: MessageSquare, color: "text-pink-500" },
   { path: "/settings/webhooks", label: "Webhooks", icon: Webhook, color: "text-orange-500", proOnly: true },
 ];
@@ -167,7 +186,9 @@ export default function DashboardLayout() {
 
   // Reusable nav item renderer for both desktop and mobile
   const renderNavItem = (item: typeof navItems[0], isMobile = false) => {
-    const isActive = location.pathname.startsWith(item.path);
+    const isActive = item.matchExact
+      ? location.pathname === item.path
+      : location.pathname.startsWith(item.path);
     const isLocked = !hasActiveSubscription;
     const isProLocked = isFreemiumUser && item.proOnly;
 

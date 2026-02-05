@@ -2,8 +2,8 @@ import type { LoaderFunctionArgs } from 'react-router';
 import { redirect } from 'react-router';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  // Redirect back to subscription selection with canceled flag
-  return redirect('/onboarding/subscription?canceled=true');
+  // Redirect back to upgrade selection with canceled flag
+  return redirect('/upgrade?canceled=true');
 }
 
 export default function CheckoutCancel() {
