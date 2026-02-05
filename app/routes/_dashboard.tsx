@@ -51,12 +51,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
     });
   }
 
+
+
   // isPaidUser is the primary check - paid product takes precedence
-  const isPaidUser = hasActiveSubscription &&
-    subscription?.stripeProductId !== settings.STRIPE_FREEMIUM_PRODUCT_ID;
+  const isPaidUser = subscription?.stripeProductId !== settings.STRIPE_FREEMIUM_PRODUCT_ID;
 
   // isFreemiumUser is derived (only if active but not paid)
-  const isFreemiumUser = hasActiveSubscription && !isPaidUser;
+  const isFreemiumUser =!isPaidUser;
 
   const [account, widgetConfig] = await Promise.all([
     prisma.account.findUnique({
