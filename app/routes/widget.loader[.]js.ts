@@ -82,7 +82,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
         box-shadow 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
         background 0.2s ease;
       z-index: 2147483646;
-      animation: sw-bounce-idle 3s ease-in-out infinite;
+      opacity: 0;
+      transform: scale(0) translateY(20px);
+      pointer-events: none;
+    }
+    
+    .sw-button.ready {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+      pointer-events: auto;
+      animation: sw-button-pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, sw-bounce-idle 3s ease-in-out 0.5s infinite;
     }
     
     .sw-button:hover {
@@ -290,6 +299,24 @@ export async function loader({ request }: LoaderFunctionArgs) {
       50% { transform: translateY(-5px) scale(1.02); }
       100% { transform: translateY(0) scale(1); }
     }
+    
+    @keyframes sw-button-pop-in {
+      0% {
+        opacity: 0;
+        transform: scale(0) translateY(20px);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.15) translateY(-5px);
+      }
+      75% {
+        transform: scale(0.95) translateY(2px);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
 
     /* Tablet screens */
     @media (max-width: 768px) {
@@ -443,21 +470,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     container.style.setProperty('--sw-accent', value);
   }
 
-  // Fetch widget config from server to get correct accent color
-  var CONFIG_URL = BASE_URL + '/widget/config.json?accountId=' + encodeURIComponent(config.accountId);
-  fetch(CONFIG_URL)
-    .then(function(response) {
-      if (response.ok) return response.json();
-      return null;
-    })
-    .then(function(serverConfig) {
-      if (serverConfig && serverConfig.accentColor) {
-        setAccentColor(serverConfig.accentColor);
-      }
-    })
-    .catch(function(err) {
-      console.warn('SupportWidget: Could not fetch config', err);
-    });
   
   // Create button
   button = document.createElement('button');
@@ -540,6 +552,30 @@ export async function loader({ request }: LoaderFunctionArgs) {
       }
     }, 2000);
   }
+  
+  // Fetch widget config from server to get correct accent color
+  var CONFIG_URL = BASE_URL + '/widget/config.json?accountId=' + encodeURIComponent(config.accountId);
+  fetch(CONFIG_URL)
+    .then(function(response) {
+      if (response.ok) return response.json();
+      return null;
+    })
+    .then(function(serverConfig) {
+      if (serverConfig && serverConfig.accentColor) {
+        setAccentColor(serverConfig.accentColor);
+      }
+      // Show button with pop-in animation after colors are loaded
+      if (!controlledByHost) {
+        button.classList.add('ready');
+      }
+    })
+    .catch(function(err) {
+      console.warn('SupportWidget: Could not fetch config', err);
+      // Still show button even if fetch fails, using default color
+      if (!controlledByHost) {
+        button.classList.add('ready');
+      }
+    });
   
   // Toggle widget
   function setOpen(nextOpen, animateClick) {
