@@ -539,17 +539,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     frameContainer.style.setProperty('max-height', 'calc(100vh - 48px)', 'important');
   }
   
-  // Show tooltip after delay
-  if (!controlledByHost) {
-    setTimeout(() => {
-      if (!isOpen) {
-        tooltip.classList.add('visible');
-        setTimeout(() => {
-          tooltip.classList.remove('visible');
-        }, 5000);
-      }
-    }, 2000);
-  }
+
   
   // Fetch widget config from server to get correct accent color
   // Also add a minimum delay before showing button for better UX
@@ -593,6 +583,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
     // Show button with pop-in animation after colors are loaded and delay passed
     if (!controlledByHost) {
       button.classList.add('ready');
+      
+      // Show tooltip shortly after button appears
+      setTimeout(() => {
+        if (!isOpen) {
+          tooltip.classList.add('visible');
+          setTimeout(() => {
+            tooltip.classList.remove('visible');
+          }, 5000);
+        }
+      }, 1000);
     }
   });
 
