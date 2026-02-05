@@ -32,6 +32,7 @@ export const settings = {
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY!,
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
   STRIPE_PRODUCT_ID: process.env.STRIPE_PRODUCT_ID!,
+  STRIPE_FREEMIUM_PRODUCT_ID: process.env.STRIPE_FREEMIUM_PRODUCT_ID || '',
   STRIPE_MONTHLY_COUPON_ID: process.env.STRIPE_MONTHLY_COUPON_ID,
 
   // Serverless detection

@@ -247,7 +247,7 @@ body {
 
 .shiny-card {
   position: relative;
-  background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 25%, #dcfce7 50%, #f0fdf4 75%, #ffffff 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #fff9e1 25%, #fff0b3 50%, #fff9e1 75%, #ffffff 100%);
   overflow: clip;
 }
 

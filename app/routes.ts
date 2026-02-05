@@ -31,6 +31,7 @@ export default [
     route("connect/telegram", "routes/_dashboard.connect.telegram.tsx"),
     route("widget", "routes/_dashboard.widget.tsx"),
     route("settings/webhooks", "routes/_dashboard.settings.webhooks.tsx"),
+    route("upgrade", "routes/_dashboard.upgrade.tsx"),
   ]),
   
   // API routes - use * to match all subpaths

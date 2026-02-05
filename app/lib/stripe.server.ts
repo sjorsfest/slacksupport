@@ -151,6 +151,57 @@ export async function getOrCreateCustomer({
 }
 
 /**
+ * Create a free-tier subscription for a new account.
+ * This creates a Stripe customer and a $0 subscription using the freemium product.
+ */
+export async function createFreemiumSubscription({
+  email,
+  name,
+  accountId,
+  userId,
+}: {
+  email: string;
+  name?: string;
+  accountId: string;
+  userId: string;
+}) {
+  const freemiumProductId = settings.STRIPE_FREEMIUM_PRODUCT_ID;
+
+  if (!freemiumProductId) {
+    throw new Error('STRIPE_FREEMIUM_PRODUCT_ID is not configured');
+  }
+
+  const customer = await getOrCreateCustomer({
+    email,
+    name,
+    metadata: { accountId, userId },
+  });
+
+  const prices = await stripe.prices.list({
+    product: freemiumProductId,
+    active: true,
+    limit: 1,
+  });
+
+  if (prices.data.length === 0) {
+    throw new Error('No active price found for freemium product');
+  }
+
+  const subscription = await stripe.subscriptions.create({
+    customer: customer.id,
+    items: [{ price: prices.data[0].id }],
+    metadata: { accountId, userId },
+  });
+
+  return {
+    customer,
+    subscription,
+    priceId: prices.data[0].id,
+    productId: freemiumProductId,
+  };
+}
+
+/**
  * Get a customer's active subscriptions.
  */
 export async function getCustomerSubscriptions(customerId: string) {

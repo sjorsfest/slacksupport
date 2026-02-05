@@ -23,6 +23,7 @@ import { FaDiscord } from "react-icons/fa";
 import { requireUser } from "~/lib/auth.server";
 import { authClient } from "~/lib/auth-client";
 import { prisma } from "~/lib/db.server";
+import { settings } from "~/lib/settings.server";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
@@ -40,12 +41,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
   });
   const hasActiveSubscription = !!subscription && ['active', 'trialing'].includes(subscription.status);
 
-  if (!isOnboardingRoute) {
-    if (!hasActiveSubscription) {
-      throw redirect('/onboarding/subscription');
-    }
-  }
+  // isPaidUser is the primary check - paid product takes precedence
+  const isPaidUser = hasActiveSubscription &&
+    subscription?.stripeProductId !== settings.STRIPE_FREEMIUM_PRODUCT_ID;
 
+  // isFreemiumUser is derived (only if active but not paid)
+  const isFreemiumUser = hasActiveSubscription && !isPaidUser;
 
   const account = await prisma.account.findUnique({
     where: { id: user.accountId },
@@ -55,6 +56,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
       },
       discordInstallation: {
         select: { discordGuildName: true },
+      },
+      telegramGroupConfigs: {
+        select: { id: true },
+        take: 1,
       },
       _count: {
         select: {
@@ -66,53 +71,73 @@ export async function loader({ request }: LoaderFunctionArgs) {
     },
   });
 
-  return { user, account, subscription, baseUrl: process.env.BASE_URL || "", supportAccountId: process.env.SUPPORT_ACCOUNT_ID || "" };
+  // Check if user has completed onboarding (has any integration connected)
+  const hasAnyIntegration = !!(
+    account?.slackInstallation ||
+    account?.discordInstallation ||
+    (account?.telegramGroupConfigs && account.telegramGroupConfigs.length > 0)
+  );
+
+  if (!isOnboardingRoute) {
+    if (!hasActiveSubscription) {
+      // No subscription at all - redirect to subscription page
+      throw redirect('/onboarding/subscription');
+    }
+    if (!hasAnyIntegration) {
+      // Has subscription but no integration - redirect to connect page
+      throw redirect('/onboarding/connect');
+    }
+  }
+
+  return {
+    user,
+    account,
+    subscription,
+    baseUrl: process.env.BASE_URL || "",
+    supportAccountId: "cml9cp40w0000e2lw5m0t6cfj" ||process.env.SUPPORT_ACCOUNT_ID || "",
+    isPaidUser,
+    isFreemiumUser,
+  };
 }
 
-const navItems: {
+type NavItem = {
   path: string;
   label: string;
   icon: typeof Ticket;
   color: string;
   external?: boolean;
-}[] = [
+  isUpgrade?: boolean;
+  proOnly?: boolean;
+};
+
+const baseNavItems: NavItem[] = [
   { path: "/tickets", label: "Tickets", icon: Ticket, color: "text-blue-500" },
-  {
-    path: "/connect",
-    label: "Connect",
-    icon: Plug,
-    color: "text-purple-500",
-  },
-  {
-    path: "/widget",
-    label: "Widget",
-    icon: MessageSquare,
-    color: "text-pink-500",
-  },
-  {
-    path: "/settings/webhooks",
-    label: "Webhooks",
-    icon: Webhook,
-    color: "text-orange-500",
-  },
-  {
-    path: "/billing",
-    label: "Billing",
-    icon: CreditCard,
-    color: "text-green-500",
-    external: true,
-  },
+  { path: "/connect", label: "Connect", icon: Plug, color: "text-purple-500" },
+  { path: "/widget", label: "Widget", icon: MessageSquare, color: "text-pink-500" },
+  { path: "/settings/webhooks", label: "Webhooks", icon: Webhook, color: "text-orange-500", proOnly: true },
 ];
 
 export default function DashboardLayout() {
-  const { user, account, subscription, baseUrl, supportAccountId } = useLoaderData<typeof loader>();
+  const { user, account, subscription, baseUrl, supportAccountId, isPaidUser, isFreemiumUser } = useLoaderData<typeof loader>();
   const location = useLocation();
   const navigate = useNavigate();
   const hasActiveSubscription = !!subscription && ['active', 'trialing'].includes(subscription.status);
+
+  // Build nav items dynamically based on subscription status
+  const navItems: NavItem[] = [
+    ...baseNavItems,
+    isFreemiumUser
+      ? { path: "/upgrade", label: "Upgrade", icon: CreditCard, color: "text-green-500", isUpgrade: true }
+      : { path: "/billing", label: "Billing", icon: CreditCard, color: "text-green-500", external: true },
+  ];
   const [lockedTooltipPath, setLockedTooltipPath] = useState<string | null>(null);
+  const [proTooltipPath, setProTooltipPath] = useState<string | null>(null);
   const [supportEnabled, setSupportEnabled] = useState(false);
   const handleLockedNavigation = (path: string | null) => {
     setLockedTooltipPath(path);
+  };
+  const handleProNavigation = (path: string | null) => {
+    setProTooltipPath(path);
   };
 
   const handleLogout = async () => {
@@ -144,6 +169,7 @@ export default function DashboardLayout() {
   const renderNavItem = (item: typeof navItems[0], isMobile = false) => {
     const isActive = location.pathname.startsWith(item.path);
     const isLocked = !hasActiveSubscription;
+    const isProLocked = isFreemiumUser && item.proOnly;
 
     const navContent = (
       <div
@@ -152,7 +178,7 @@ export default function DashboardLayout() {
           isMobile
             ? cn(
                 "flex-col gap-1 px-3 py-2 rounded-xl",
-                isLocked
+                isLocked || isProLocked
                   ? "opacity-60 text-muted-foreground"
                   : isActive
                     ? "text-primary-700"
@@ -160,7 +186,7 @@ export default function DashboardLayout() {
               )
             : cn(
                 "gap-3 px-4 py-3 rounded-xl",
-                isLocked
+                isLocked || isProLocked
                   ? "opacity-60 cursor-not-allowed text-muted-foreground"
                   : isActive
                     ? "bg-primary/10 text-primary-700 shadow-sm"
@@ -168,7 +194,7 @@ export default function DashboardLayout() {
               )
         )}
       >
-        {isActive && !isLocked && !isMobile && (
+        {isActive && !isLocked && !isProLocked && !isMobile && (
           <motion.div
             layoutId="activeNav"
             className="absolute inset-0 bg-primary/10 rounded-xl"
@@ -181,7 +207,7 @@ export default function DashboardLayout() {
           />
         )}
 
-        {isActive && !isLocked && isMobile && (
+        {isActive && !isLocked && !isProLocked && isMobile && (
           <motion.div
             layoutId="activeNavMobile"
             className="absolute inset-0 bg-primary/20 rounded-xl"
@@ -199,7 +225,7 @@ export default function DashboardLayout() {
             className={cn(
               "relative z-10 transition-transform",
               isMobile ? "w-5 h-5" : "w-5 h-5 group-hover:scale-110 group-hover:rotate-3",
-              isLocked ? "text-muted-foreground" : isActive ? "text-primary-700" : item.color
+              isLocked || isProLocked ? "text-muted-foreground" : isActive ? "text-primary-700" : item.color
             )}
           />
           {/* Badge for mobile - positioned on icon */}
@@ -272,6 +298,31 @@ export default function DashboardLayout() {
       );
     }
 
+    if (isProLocked) {
+      return (
+        <button
+          key={item.path}
+          type="button"
+          onMouseEnter={() => !isMobile && handleProNavigation(item.path)}
+          onMouseLeave={() => !isMobile && handleProNavigation(null)}
+          onFocus={() => !isMobile && handleProNavigation(item.path)}
+          onBlur={() => !isMobile && handleProNavigation(null)}
+          className={cn(
+            "relative text-left",
+            isMobile ? "flex-1 flex justify-center" : "block w-full"
+          )}
+          aria-disabled="true"
+        >
+          {navContent}
+          {!isMobile && proTooltipPath === item.path && (
+            <div className="absolute left-1/2 top-full z-20 mt-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-foreground shadow-md">
+              Upgrade to Pro to unlock this feature
+            </div>
+          )}
+        </button>
+      );
+    }
+
     if (item.external) {
       return (
         <button
@@ -285,6 +336,35 @@ export default function DashboardLayout() {
         >
           {navContent}
         </button>
+      );
+    }
+
+    // Special shiny upgrade button for freemium users
+    if (item.isUpgrade) {
+      return (
+        <Link
+          key={item.path}
+          to={item.path}
+          className={cn(
+            isMobile ? "flex-1 flex justify-center" : "block"
+          )}
+        >
+          <div
+            className={cn(
+              "relative flex items-center transition-all duration-200 group overflow-hidden shiny-card",
+              isMobile
+                ? "flex-col gap-1 px-3 py-2 rounded-xl"
+                : "gap-3 px-4 py-3 rounded-xl border-2 border-black",
+              "bg-gradient-to-r from-primary to-secondary text-black font-bold"
+            )}
+            style={!isMobile ? { boxShadow: '2px 2px 0px 0px #1a1a1a' } : undefined}
+          >
+            <item.icon className={cn("w-5 h-5", isMobile ? "" : "group-hover:scale-110 group-hover:rotate-3 transition-transform")} />
+            <span className={cn("font-bold relative z-10", isMobile && "text-[10px]")}>
+              {item.label}
+            </span>
+          </div>
+        </Link>
       );
     }
 
@@ -326,9 +406,12 @@ export default function DashboardLayout() {
               <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white animate-bounce-subtle" />
             </div>
             <div className="flex flex-col items-center justify-center">
-              <h1 className="font-display text-4xl font-bold text-primary-500 text-center leading-[0.8] w-fit mx-auto tracking-tighter">
+              <h1 className="font-display select-none text-4xl font-bold text-primary-500 text-center leading-[0.8] w-fit mx-auto tracking-tighter">
                 Donkey Support
               </h1>
+              {isFreemiumUser && (
+                <span className="text-xs text-muted-foreground font-medium mt-2 -mb-2">Freemium</span>
+              )}
             </div>
           </div>
         </div>
@@ -388,9 +471,14 @@ export default function DashboardLayout() {
             alt="Donkey Support"
             className="w-10 h-10 object-contain"
           />
-          <h1 className="font-display text-xl font-bold text-primary-500 tracking-tighter">
-            Donkey Support
-          </h1>
+          <div>
+            <h1 className="font-display text-xl font-bold text-primary-500 tracking-tighter">
+              Donkey Support
+            </h1>
+            {isFreemiumUser && (
+              <span className="text-[10px] text-muted-foreground font-medium">freemium</span>
+            )}
+          </div>
         </div>
         <Button
           onClick={handleLogout}

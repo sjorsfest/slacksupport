@@ -6,6 +6,7 @@ import { Send, X, Sparkles, PartyPopper, AlertTriangle, CheckCircle2, RefreshCw,
 import { isRouteErrorResponse, useRouteError } from "react-router";
 
 import { prisma } from "~/lib/db.server";
+import { settings } from "~/lib/settings.server";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
@@ -95,6 +96,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
   }
 
+  // Check if this is a paid account (not freemium)
+  const subscription = await prisma.subscription.findUnique({
+    where: { accountId },
+    select: { stripeProductId: true, status: true },
+  });
+
+  const isPaidAccount = subscription &&
+    ['active', 'trialing'].includes(subscription.status) &&
+    subscription.stripeProductId !== settings.STRIPE_FREEMIUM_PRODUCT_ID;
+
   let existingTicket = null;
   if (visitorId) {
     const visitor = await prisma.visitor.findUnique({
@@ -147,6 +158,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
           })),
         }
       : null,
+    isPaidAccount,
   };
 }
 
@@ -744,6 +756,20 @@ export default function WidgetFrame() {
                     </div>
                   )}
                 </div>
+
+                {/* Powered by watermark for freemium accounts */}
+                {!data.isPaidAccount && (
+                  <div className="pb-2 -mt-2 px-4 bg-white text-center">
+                    <a
+                      href="https://donkey.support"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      Powered by <span style={{ color: data.config.primaryColor }} className="font-semibold">Donkey Support 🫏</span>
+                    </a>
+                  </div>
+                )}
               </div>
             )}
           </div>

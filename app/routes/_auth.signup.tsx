@@ -4,6 +4,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { z } from "zod";
 import { auth, getCurrentUser } from "~/lib/auth.server";
 import { prisma } from "~/lib/db.server";
+import { createFreemiumSubscription } from "~/lib/stripe.server";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/utils";
@@ -86,11 +87,41 @@ export async function action({ request }: ActionFunctionArgs) {
     }
 
     const data = await response.clone().json();
-    
+
     if (!data?.user?.id) {
       // Cleanup account if user creation fails
       await prisma.account.delete({ where: { id: account.id } });
       return { error: "Failed to create user" };
+    }
+
+    // Create freemium subscription for the new account
+    try {
+      const { customer, subscription, priceId, productId } = await createFreemiumSubscription({
+        email,
+        name,
+        accountId: account.id,
+        userId: data.user.id,
+      });
+
+      const subscriptionItem = subscription.items.data[0];
+      const currentPeriodStart = subscriptionItem?.current_period_start;
+      const currentPeriodEnd = subscriptionItem?.current_period_end;
+
+      await prisma.subscription.create({
+        data: {
+          accountId: account.id,
+          stripeCustomerId: customer.id,
+          stripeSubscriptionId: subscription.id,
+          stripePriceId: priceId,
+          stripeProductId: productId,
+          status: 'active',
+          currentPeriodStart: currentPeriodStart ? new Date(currentPeriodStart * 1000) : null,
+          currentPeriodEnd: currentPeriodEnd ? new Date(currentPeriodEnd * 1000) : null,
+        },
+      });
+    } catch (freemiumError) {
+      console.error('Failed to create freemium subscription:', freemiumError);
+      // Don't block signup if freemium creation fails
     }
 
     // Redirect to verification pending page with email

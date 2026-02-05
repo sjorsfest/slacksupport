@@ -4,6 +4,7 @@ import { createAuthMiddleware } from "better-auth/api";
 import { redirect } from 'react-router';
 import { prisma } from "./db.server";
 import { sendVerificationEmail } from "./email.server";
+import { createFreemiumSubscription } from "./stripe.server";
 
 /**
  * Normalize email by removing + subaddressing
@@ -135,6 +136,37 @@ export const auth = betterAuth({
         });
 
         console.log(`Created account for OAuth user: ${userId}`);
+
+        // Create freemium subscription for new OAuth account
+        try {
+          const { customer, subscription, priceId, productId } = await createFreemiumSubscription({
+            email: dbUser.email,
+            name: dbUser.name || undefined,
+            accountId: account.id,
+            userId: dbUser.id,
+          });
+
+          const subscriptionItem = subscription.items.data[0];
+          const currentPeriodStart = subscriptionItem?.current_period_start;
+          const currentPeriodEnd = subscriptionItem?.current_period_end;
+
+          await prisma.subscription.create({
+            data: {
+              accountId: account.id,
+              stripeCustomerId: customer.id,
+              stripeSubscriptionId: subscription.id,
+              stripePriceId: priceId,
+              stripeProductId: productId,
+              status: 'active',
+              currentPeriodStart: currentPeriodStart ? new Date(currentPeriodStart * 1000) : null,
+              currentPeriodEnd: currentPeriodEnd ? new Date(currentPeriodEnd * 1000) : null,
+            },
+          });
+        } catch (freemiumError) {
+          console.error('Failed to create freemium subscription for OAuth user:', freemiumError);
+          // Don't block OAuth signup if freemium creation fails
+        }
+
         return;
       }
 
