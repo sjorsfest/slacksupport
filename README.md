@@ -1,35 +1,58 @@
-# Support Widget
+# Support Widget (Donkey Support)
 
-A multi-tenant SaaS ticketing tool with an embeddable website widget and Slack integration. Customer messages from the widget create Slack threads, and agent replies sync back to the visitor in real-time.
+A multi-tenant customer support platform with an embeddable website widget and multi-channel routing to Slack, Discord, and Telegram. Visitor messages create tickets, and agent replies sync back to the widget in real time.
 
-## Features
+## What This App Does
 
-- **Embeddable Widget**: Add a beautiful, Slack-inspired chat widget to any website with a simple script tag
-- **Slack Integration**: Tickets appear as threads in your chosen Slack channel
-- **Bi-directional Sync**: Messages flow both ways in real-time via WebSocket
-- **Multi-tenant**: Each customer gets their own account with isolated data
-- **Webhook Support**: Send ticket events to external systems with signed payloads
-- **Dashboard**: Manage tickets, configure Slack, customize widget appearance
+- Visitors start conversations through the widget on your website.
+- Each conversation becomes a ticket in the dashboard and a thread in your chosen chat platform.
+- Agents reply in Slack/Discord/Telegram and the visitor sees responses instantly.
+- Teams manage tickets, customize the widget, set office hours, and restrict allowed domains.
+
+## Key Features
+
+- Embeddable widget with real-time messaging
+- Slack, Discord, and Telegram integrations
+- Office hours with “away” state in the widget
+- Allowed domain restrictions for widget embedding
+- Ticket dashboard with threaded conversations
+- Webhooks for ticket events
+- Freemium and Pro subscriptions with Stripe checkout
+
+## Plans (As Implemented)
+
+Freemium
+- 1 to 3 allowed domains (minimum 1)
+- “Powered by Donkey Support” branding on the widget
+- Webhooks shown as a Pro feature in the UI
+
+Pro
+- Unlimited allowed domains
+- Branding removed
+- Webhooks enabled in the UI
+
+Note: Webhooks are UI-gated in the dashboard. Server-side enforcement is not currently implemented.
 
 ## Tech Stack
 
-- **Framework**: React Router 7 (full-stack)
-- **Database**: PostgreSQL (Neon-compatible)
-- **ORM**: Prisma
-- **Auth**: Better Auth (Email/Password + Social)
-- **Job Queue**: BullMQ with Redis
-- **Real-time**: WebSocket + Redis pub/sub
-- **Styling**: Tailwind CSS 4
+- React Router 7 (full-stack)
+- PostgreSQL + Prisma
+- Better Auth (Email/Password + Social)
+- Stripe (subscriptions)
+- BullMQ + Redis (jobs + pub/sub)
+- WebSocket + Redis pub/sub (real-time)
+- Tailwind CSS 4
 
 ## Quick Start
 
 ### Prerequisites
 
 - Node.js 20+
-- Docker (for local PostgreSQL and Redis)
-- A Slack workspace where you can install apps
+- Docker (for local Postgres and Redis)
+- A Slack workspace (if you want Slack integration)
+- Stripe test keys and products (required for signup + freemium provisioning)
 
-### 1. Clone and Install
+### 1. Install
 
 ```bash
 git clone <repo-url>
@@ -49,46 +72,35 @@ docker-compose up -d postgres redis
 cp .env.example .env
 ```
 
-Edit `.env` with your values:
+Generate secrets:
 
 ```bash
-# Generate encryption key
-openssl rand -hex 32
-
-# Generate session secret
-openssl rand -base64 32
-
-# Better Auth Secret
-openssl rand -base64 32
+openssl rand -hex 32      # ENCRYPTION_KEY
+openssl rand -base64 32   # SESSION_SECRET
+openssl rand -base64 32   # BETTER_AUTH_SECRET
 ```
 
-### 4. Create Slack App
+Minimum required variables for a working app:
 
-1. Go to [api.slack.com/apps](https://api.slack.com/apps)
-2. Click "Create New App" → "From an app manifest"
-3. Paste the contents of `slack-app-manifest.json`
-4. Replace `YOUR_DOMAIN` with your ngrok URL (see below)
-5. Install to your workspace
-6. Copy credentials to `.env`:
-   - `SLACK_CLIENT_ID`
-   - `SLACK_CLIENT_SECRET`
-   - `SLACK_SIGNING_SECRET`
+- `DATABASE_URL`
+- `REDIS_URL`
+- `BASE_URL`
+- `BETTER_AUTH_SECRET`
+- `BETTER_AUTH_URL`
+- `SESSION_SECRET`
+- `ENCRYPTION_KEY`
+- `STRIPE_PUBLIC_KEY`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_PRODUCT_ID`
+- `STRIPE_FREEMIUM_PRODUCT_ID`
 
-### 5. Set Up Tunnel (for local Slack events)
+Optional (only if you want the integration):
 
-Slack needs to reach your local server. Use ngrok or cloudflared:
+- Slack: `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, `SLACK_SIGNING_SECRET`
+- Discord: `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_PUBLIC_KEY`, `DISCORD_BOT_TOKEN`
+- Telegram: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`
 
-```bash
-# Using ngrok
-ngrok http 5173
-
-# Update .env
-BASE_URL="https://your-subdomain.ngrok.io"
-
-# Update Slack app manifest with your ngrok URL
-```
-
-### 6. Initialize Database
+### 4. Initialize Database
 
 ```bash
 npx prisma generate
@@ -96,53 +108,63 @@ npx prisma db push
 npx prisma db seed
 ```
 
-### 7. Start Development Server
+### 5. Start Development Server
 
 ```bash
 npm run dev
 ```
 
-Visit [http://localhost:5173](http://localhost:5173)
+Visit `http://localhost:5173`.
 
-### 8. Test Credentials
+### 6. Test Credentials
 
 If you ran the seed script:
 
 - Email: `demo@example.com`
 - Password: `demo123`
 
-## Project Structure
+## Integration Setup
 
+### Slack
+
+1. Go to `https://api.slack.com/apps` and create a new app from `slack-app-manifest.json`.
+2. Replace `YOUR_DOMAIN` in the manifest with your public URL (ngrok or production).
+3. Install the app to your workspace and copy credentials to `.env`.
+
+Local tunneling (example):
+
+```bash
+ngrok http 5173
 ```
-slacksupport/
-├── app/
-│   ├── routes/           # React Router routes
-│   │   ├── _auth.*       # Auth pages (login, signup) with server-side actions
-│   │   ├── _dashboard.*  # Protected dashboard pages
-│   │   ├── api.*         # API endpoints
-│   │   ├── slack.*       # Slack OAuth and events
-│   │   └── widget.*      # Widget loader and frame
-│   ├── lib/              # Server utilities
-│   │   ├── auth.ts       # Better Auth configuration
-│   │   ├── auth.server.ts # Server-side auth helpers
-│   │   ├── auth-client.ts # Client-side auth client
-│   │   ├── crypto.server.ts
-│   │   ├── db.server.ts
-│   │   ├── redis.server.ts
-│   │   ├── slack.server.ts
-│   │   ├── webhook.server.ts
-│   │   └── ws.server.ts
-│   ├── jobs/             # BullMQ workers
-│   └── types/            # Zod schemas
-├── prisma/
-│   └── schema.prisma     # Database schema
-├── tests/                # Unit tests
-└── public/               # Static assets
-```
+
+Set `BASE_URL` to your ngrok URL and update the Slack manifest.
+
+### Discord
+
+Create an app in the Discord Developer Portal and set:
+
+- `DISCORD_CLIENT_ID`
+- `DISCORD_CLIENT_SECRET`
+- `DISCORD_PUBLIC_KEY`
+- `DISCORD_BOT_TOKEN`
+
+### Telegram
+
+Create a bot with BotFather and set:
+
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_WEBHOOK_SECRET`
+
+## How People Use It
+
+1. Sign up and connect Slack, Discord, or Telegram.
+2. Configure allowed domains and office hours.
+3. Embed the widget on your site.
+4. Respond to tickets in the dashboard or directly in your chat platform.
 
 ## Widget Integration
 
-Add this snippet to your website:
+Basic:
 
 ```html
 <script>
@@ -151,7 +173,7 @@ Add this snippet to your website:
 <script async src="https://your-domain.com/widget/loader.js"></script>
 ```
 
-### With Visitor Identification
+With visitor identification:
 
 ```html
 <script>
@@ -161,54 +183,26 @@ Add this snippet to your website:
     name: "John Doe",
     metadata: {
       userId: "12345",
-      plan: "pro",
-    },
+      plan: "pro"
+    }
   };
 </script>
 <script async src="https://your-domain.com/widget/loader.js"></script>
 ```
 
-## API Endpoints
+## API Endpoints (Selected)
 
-### Authentication
-
-Authentication is handled by **Better Auth** and React Router server-side actions.
-
-- `POST /signup` - Create account (via `_auth.signup.tsx` action)
-- `POST /login` - Sign in (via `_auth.login.tsx` action)
-
-### Tickets
-
-- `GET /api/tickets` - List tickets (dashboard)
-- `POST /api/tickets` - Create ticket (widget)
-- `GET /api/tickets/:id` - Get ticket details
-- `POST /api/tickets/:id/messages` - Send message
-- `PUT /api/tickets/:id` - Update ticket status/priority
-
-### Account
-
-- `GET /api/account` - Get account info
-- `PUT /api/account` - Update account
-- `GET /api/account/widget-config` - Get widget settings
-- `PUT /api/account/widget-config` - Update widget settings
-
-### Slack
-
-- `GET /slack/install` - Start OAuth flow
-- `GET /slack/oauth/callback` - OAuth callback
-- `POST /slack/events` - Slack Events API receiver
-- `GET /api/slack/channels` - List channels
-- `POST /api/slack/select-channel` - Set default channel
-- `POST /api/slack/test-post` - Send test message
-
-### Webhooks
-
-- `GET /api/webhooks` - List webhook endpoints
-- `POST /api/webhooks` - Create webhook endpoint
-- `PUT /api/webhooks/:id` - Update webhook
-- `DELETE /api/webhooks/:id` - Delete webhook
-- `POST /api/webhooks/:id/rotate-secret` - Rotate signing secret
-- `GET /api/webhooks/:id/deliveries` - View delivery history
+- `GET /api/tickets`
+- `POST /api/tickets`
+- `GET /api/tickets/:id`
+- `POST /api/tickets/:id/messages`
+- `PUT /api/tickets/:id`
+- `GET /api/account`
+- `PUT /api/account`
+- `GET /api/account/widget-config`
+- `PUT /api/account/widget-config`
+- `GET /api/webhooks`
+- `POST /api/webhooks`
 
 ## Running Tests
 
@@ -218,43 +212,23 @@ npm test
 
 ## Production Deployment
 
-### Build
+Build:
 
 ```bash
 npm run build
 ```
 
-### Environment Variables
+Notes:
 
-All variables from `.env.example` are required. For production:
-
-- Use a hosted PostgreSQL (Neon, Supabase, etc.)
-- Use a hosted Redis (Upstash, Redis Cloud, etc.)
+- Use managed Postgres and Redis
 - Set `NODE_ENV=production`
-- Use your production domain for `BASE_URL`
+- Set `BASE_URL` and `BETTER_AUTH_URL` to your production domain
 
 ### Docker
 
 ```bash
 docker build -t slacksupport .
 docker run -p 3000:3000 --env-file .env slacksupport
-```
-
-## Architecture
-
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Website   │────▶│   Widget    │────▶│   Backend   │
-│  (Customer) │     │  (iframe)   │     │ (API + WS)  │
-└─────────────┘     └─────────────┘     └──────┬──────┘
-                                               │
-                    ┌──────────────────────────┼──────────────────────────┐
-                    │                          │                          │
-                    ▼                          ▼                          ▼
-             ┌─────────────┐           ┌─────────────┐           ┌─────────────┐
-             │  PostgreSQL │           │    Redis    │           │    Slack    │
-             │  (Tickets)  │           │ (Jobs/PubSub)│           │  (Threads)  │
-             └─────────────┘           └─────────────┘           └─────────────┘
 ```
 
 ## License
