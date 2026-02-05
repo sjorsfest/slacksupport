@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 set -e  # stop on first error
 
-APP_DIR="~/Desktop/apps/slacksupport"   # change this
 SERVICE="slacksupport"
 
-cd "$APP_DIR"
 
 echo "📥 Pulling latest code..."
 git pull origin main
