@@ -552,28 +552,33 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
   
   // Fetch widget config from server to get correct accent color
+  // Also add a minimum delay before showing button for better UX
   var CONFIG_URL = BASE_URL + '/widget/config.json?accountId=' + encodeURIComponent(config.accountId);
-  fetch(CONFIG_URL)
+  var configPromise = fetch(CONFIG_URL)
     .then(function(response) {
       if (response.ok) return response.json();
       return null;
     })
-    .then(function(serverConfig) {
-      if (serverConfig && serverConfig.accentColor) {
-        setAccentColor(serverConfig.accentColor);
-      }
-      // Show button with pop-in animation after colors are loaded
-      if (!controlledByHost) {
-        button.classList.add('ready');
-      }
-    })
     .catch(function(err) {
       console.warn('SupportWidget: Could not fetch config', err);
-      // Still show button even if fetch fails, using default color
-      if (!controlledByHost) {
-        button.classList.add('ready');
-      }
+      return null;
     });
+  
+  var delayPromise = new Promise(function(resolve) {
+    setTimeout(resolve, 2500);
+  });
+  
+  // Wait for both the delay and the config fetch before showing button
+  Promise.all([configPromise, delayPromise]).then(function(results) {
+    var serverConfig = results[0];
+    if (serverConfig && serverConfig.accentColor) {
+      setAccentColor(serverConfig.accentColor);
+    }
+    // Show button with pop-in animation after colors are loaded and delay passed
+    if (!controlledByHost) {
+      button.classList.add('ready');
+    }
+  });
   
   // Toggle widget
   function setOpen(nextOpen, animateClick) {
