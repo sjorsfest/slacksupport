@@ -442,6 +442,22 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
     container.style.setProperty('--sw-accent', value);
   }
+
+  // Fetch widget config from server to get correct accent color
+  var CONFIG_URL = BASE_URL + '/widget/config.json?accountId=' + encodeURIComponent(config.accountId);
+  fetch(CONFIG_URL)
+    .then(function(response) {
+      if (response.ok) return response.json();
+      return null;
+    })
+    .then(function(serverConfig) {
+      if (serverConfig && serverConfig.accentColor) {
+        setAccentColor(serverConfig.accentColor);
+      }
+    })
+    .catch(function(err) {
+      console.warn('SupportWidget: Could not fetch config', err);
+    });
   
   // Create button
   button = document.createElement('button');

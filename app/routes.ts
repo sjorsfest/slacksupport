@@ -74,5 +74,6 @@ export default [
 
   // Widget routes
   route("widget/loader.js", "routes/widget.loader[.]js.ts"),
+  route("widget/config.json", "routes/widget.config[.]json.ts"),
   route("widget/frame", "routes/widget.frame.tsx"),
 ] satisfies RouteConfig;
