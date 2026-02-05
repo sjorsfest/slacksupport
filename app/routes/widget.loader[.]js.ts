@@ -77,17 +77,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: 
-        transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
-        box-shadow 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
-        background 0.2s ease;
       z-index: 2147483646;
+      visibility: hidden;
       opacity: 0;
       transform: scale(0) translateY(20px);
       pointer-events: none;
     }
     
     .sw-button.ready {
+      visibility: visible;
       opacity: 1;
       transform: scale(1) translateY(0);
       pointer-events: auto;
