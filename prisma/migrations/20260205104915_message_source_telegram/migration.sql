@@ -1,2 +1,2 @@
 -- AlterEnum
-ALTER TYPE "MessageSource" ADD VALUE 'telegram';
+ALTER TYPE "MessageSource" ADD VALUE IF NOT EXISTS 'telegram';
