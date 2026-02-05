@@ -15,7 +15,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   try {
     // Retrieve the checkout session from Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ['subscription', 'subscription.items.data.price.product'],
+      expand: ['subscription', 'subscription.items.data.price'],
     });
 
     if (!session.metadata?.accountId) {
@@ -33,7 +33,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     const subscriptionItem = subscription.items.data[0];
     const price = subscriptionItem?.price;
-    const product = price?.product as import('stripe').Stripe.Product | undefined;
+    const productId =
+      typeof price?.product === 'string' ? price.product : price?.product?.id;
     const currentPeriodStart = subscriptionItem?.current_period_start;
     const currentPeriodEnd = subscriptionItem?.current_period_end;
 
@@ -45,7 +46,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         stripeCustomerId: session.customer as string,
         stripeSubscriptionId: subscription.id,
         stripePriceId: price?.id,
-        stripeProductId: product?.id,
+        stripeProductId: productId,
         status: subscription.status as import('@prisma/client').SubscriptionStatus,
         currentPeriodStart: currentPeriodStart ? new Date(currentPeriodStart * 1000) : null,
         currentPeriodEnd: currentPeriodEnd ? new Date(currentPeriodEnd * 1000) : null,
@@ -54,7 +55,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       update: {
         stripeSubscriptionId: subscription.id,
         stripePriceId: price?.id,
-        stripeProductId: product?.id,
+        stripeProductId: productId,
         status: subscription.status as import('@prisma/client').SubscriptionStatus,
         currentPeriodStart: currentPeriodStart ? new Date(currentPeriodStart * 1000) : null,
         currentPeriodEnd: currentPeriodEnd ? new Date(currentPeriodEnd * 1000) : null,

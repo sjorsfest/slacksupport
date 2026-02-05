@@ -103,7 +103,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
     if (!hasAnyIntegration && !hasSettingsConfigured) {
       // No integration yet - start with connect
-      const route = hasAnyIntegration ?  '/onboarding/connect' : '/onboarding/settings'
+      const route = hasAnyIntegration ?   '/onboarding/settings' : '/onboarding/connect'
       return redirect(route)
     } 
   }

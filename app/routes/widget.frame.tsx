@@ -836,12 +836,12 @@ export default function WidgetFrame() {
 
                 {/* Powered by watermark for freemium accounts */}
                 {!data.isPaidAccount && (
-                  <div className="pb-2 -mt-2 px-4 bg-white text-center">
+                  <div className="pb-2 -mt-4 px-4 bg-white text-center">
                     <a
                       href="https://donkey.support"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                      className="text-[9px] text-slate-400 hover:text-slate-600 transition-colors"
                     >
                       Powered by <span style={{ color: data.config.primaryColor }} className="font-semibold">Donkey Support 🫏</span>
                     </a>

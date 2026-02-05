@@ -39,6 +39,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
   });
 
   const baseUrl = settings.BASE_URL;
+  const subscription = await prisma.subscription.findUnique({
+    where: { accountId: user.accountId },
+    select: { stripeProductId: true, status: true },
+  });
+
+  const isPaidAccount = Boolean(
+    subscription &&
+      ["active", "trialing"].includes(subscription.status) &&
+      subscription.stripeProductId !== settings.STRIPE_FREEMIUM_PRODUCT_ID
+  );
 
   return {
     accountId: user.accountId,
@@ -53,11 +63,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
       officeHoursTimezone: "UTC",
     },
     baseUrl,
+    isPaidAccount,
   };
 }
 
 export default function WidgetSettings() {
-  const { accountId, config, baseUrl } = useLoaderData<typeof loader>();
+  const { accountId, config, baseUrl, isPaidAccount } =
+    useLoaderData<typeof loader>();
   const [primaryColor, setPrimaryColor] = useState(config.primaryColor);
   const [accentColor, setAccentColor] = useState(config.accentColor);
   const [greetingText, setGreetingText] = useState(config.greetingText);
@@ -653,6 +665,33 @@ function App() {
                         </div>
                       </div>
                     </div>
+
+                    {!isPaidAccount && (
+                      <div className="pb-2 -mt-4 px-4 bg-white text-center">
+                        <div className="relative text-[9px] inline-flex items-center justify-center group pointer-events-auto">
+                          <a
+                            href="https://donkey.support"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-slate-400/80 hover:text-slate-600 transition-colors"
+                          >
+                            Powered by{" "}
+                            <span
+                              style={{ color: primaryColor }}
+                              className="font-semibold"
+                            >
+                              Donkey Support 🫏
+                            </span>
+                          </a>
+                          <a
+                            href="/upgrade"
+                            className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-slate-200 bg-white px-2 py-1 text-[8px] text-slate-600 shadow-sm opacity-0 scale-95 transition-all duration-150 group-hover:opacity-100 group-hover:scale-100"
+                          >
+                            Upgrade to remove
+                          </a>
+                        </div>
+                      </div>
+                    )}
                   </motion.div>
 
                   {/* Widget Toggle Button */}
