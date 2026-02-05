@@ -57,8 +57,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
     
     :host {
-      --sw-accent: \${config.accentColor || '#FF4FA3'};
-      --sw-accent-light: \${config.accentColor ? config.accentColor + '33' : '#FF4FA333'};
+      --sw-primary: \${config.primaryColor || '#FF4FA3'};
+      --sw-primary-light: \${config.primaryColor ? config.primaryColor + '33' : '#FF4FA333'};
     }
     
     .sw-button {
@@ -68,12 +68,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
       width: 72px;
       height: 72px;
       border-radius: 50%;
-      background: var(--sw-accent);
+      background: var(--sw-primary);
       border: 3px solid #1a1a1a;
       cursor: pointer;
       box-shadow: 
         3px 3px 0px 0px #1a1a1a,
-        0 0 0 0 var(--sw-accent-light);
+        0 0 0 0 var(--sw-primary-light);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -96,7 +96,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       transform: scale(1.08) rotate(-8deg);
       box-shadow: 
         4px 4px 0px 0px #1a1a1a,
-        0 0 0 6px var(--sw-accent-light);
+        0 0 0 6px var(--sw-primary-light);
       animation: sw-wiggle 0.4s ease-in-out;
     }
     
@@ -104,7 +104,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       transform: scale(0.92) rotate(0deg);
       box-shadow: 
         1px 1px 0px 0px #1a1a1a,
-        0 0 0 10px var(--sw-accent-light);
+        0 0 0 10px var(--sw-primary-light);
       transition: 
         transform 0.1s ease,
         box-shadow 0.1s ease;
@@ -369,7 +369,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       .sw-button:hover {
         box-shadow: 
           3px 3px 0px 0px #1a1a1a,
-          0 0 0 5px var(--sw-accent-light);
+          0 0 0 5px var(--sw-primary-light);
       }
       
       .sw-button svg {
@@ -457,15 +457,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return '#' + hex;
   }
 
-  function setAccentColor(value) {
+  function setPrimaryColor(value) {
     if (!container || !value) return;
     var normalized = normalizeHexColor(value);
     if (normalized) {
-      container.style.setProperty('--sw-accent', normalized);
-      container.style.setProperty('--sw-accent-light', normalized + '33');
+      container.style.setProperty('--sw-primary', normalized);
+      container.style.setProperty('--sw-primary-light', normalized + '33');
       return;
     }
-    container.style.setProperty('--sw-accent', value);
+    container.style.setProperty('--sw-primary', value);
   }
 
   
@@ -571,14 +571,52 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // Wait for both the delay and the config fetch before showing button
   Promise.all([configPromise, delayPromise]).then(function(results) {
     var serverConfig = results[0];
-    if (serverConfig && serverConfig.accentColor) {
-      setAccentColor(serverConfig.accentColor);
+    
+    if (!serverConfig) {
+      if (!controlledByHost) {
+        showError('Support Widget: Failed to load configuration');
+      }
+      return;
     }
+    
+    if (serverConfig.error) {
+      if (!controlledByHost) {
+        showError('Support Widget: ' + serverConfig.error);
+      }
+      return;
+    }
+
+    if (serverConfig.primaryColor) {
+      setPrimaryColor(serverConfig.primaryColor);
+    }
+    
     // Show button with pop-in animation after colors are loaded and delay passed
     if (!controlledByHost) {
       button.classList.add('ready');
     }
   });
+
+  function showError(message) {
+    var errorDiv = document.createElement('div');
+    errorDiv.style.cssText = 'position:fixed;bottom:24px;right:24px;padding:12px 16px;background:#fee2e2;color:#b91c1c;border:1px solid #f87171;border-radius:12px;font-family:sans-serif;font-size:14px;font-weight:600;z-index:2147483647;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);opacity:0;transform:translateY(10px);transition:all 0.3s ease;';
+    errorDiv.textContent = message;
+    shadow.appendChild(errorDiv);
+    
+    // Animate in
+    setTimeout(function() {
+      errorDiv.style.opacity = '1';
+      errorDiv.style.transform = 'translateY(0)';
+    }, 10);
+    
+    // Auto remove after 10s
+    setTimeout(function() {
+      errorDiv.style.opacity = '0';
+      errorDiv.style.transform = 'translateY(10px)';
+      setTimeout(function() {
+        if (errorDiv.parentNode) errorDiv.parentNode.removeChild(errorDiv);
+      }, 300);
+    }, 10000);
+  }
   
   // Toggle widget
   function setOpen(nextOpen, animateClick) {
@@ -656,8 +694,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
         break;
       case 'sw:ready':
         // Widget frame is ready
-        if (data.accentColor) {
-          setAccentColor(data.accentColor);
+        if (data.primaryColor) {
+          setPrimaryColor(data.primaryColor);
         }
         break;
     }

@@ -364,11 +364,11 @@ export default function WidgetFrame() {
     window.parent.postMessage(
       {
         type: "sw:ready",
-        accentColor: data.config.accentColor,
+        primaryColor: data.config.primaryColor,
       },
       "*"
     );
-  }, [data.config.accentColor]);
+  }, [data.config.primaryColor]);
 
   const handleContinueChat = () => {
     setIsIdle(false);
