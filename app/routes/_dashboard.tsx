@@ -101,10 +101,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   if (!isOnboardingRoute) {
 
-    if (!hasAnyIntegration) {
-      // Has subscription but no integration - start with settings first
-      throw redirect(hasSettingsConfigured ? '/onboarding/connect' : '/onboarding/settings');
-    }
+    if (!hasAnyIntegration && !hasSettingsConfigured) {
+      // No integration yet - start with connect
+      const route = hasAnyIntegration ?  '/onboarding/connect' : '/onboarding/settings'
+      return redirect(route)
+    } 
   }
 
   return {
@@ -132,8 +133,8 @@ type NavItem = {
 const baseNavItems: NavItem[] = [
   { path: "/tickets", label: "Tickets", icon: Ticket, color: "text-blue-500" },
   { path: "/connect", label: "Connect", icon: Plug, color: "text-purple-500" },
-  { path: "/settings", label: "Settings", icon: Settings, color: "text-amber-500", matchExact: true },
   { path: "/widget", label: "Widget", icon: MessageSquare, color: "text-pink-500" },
+  { path: "/settings", label: "Settings", icon: Settings, color: "text-amber-500", matchExact: true },
   { path: "/settings/webhooks", label: "Webhooks", icon: Webhook, color: "text-orange-500", proOnly: true },
 ];
 

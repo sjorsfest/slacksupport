@@ -536,13 +536,13 @@ export default function TelegramIntegration() {
             </Card>
           )}
 
-          {isOnboarding && (
-            <div className="pt-2 flex justify-end">
-              <Button asChild className="bg-secondary hover:bg-secondary/90 text-white">
-                <Link to="/onboarding/embed">Embed the widget!</Link>
-              </Button>
-            </div>
-          )}
+            {isOnboarding && (
+              <div className="pt-2 flex justify-end">
+                <Button asChild className="bg-secondary hover:bg-secondary/90 text-white">
+                  <Link to="/onboarding/settings">Continue to Settings</Link>
+                </Button>
+              </div>
+            )}
         </motion.div>
       )}
     </div>

@@ -335,7 +335,7 @@ export default function SlackIntegration() {
           {isOnboarding && (
             <div className="pt-2 flex justify-end">
               <Button asChild className="bg-secondary hover:bg-secondary/90 text-white">
-                <Link to="/onboarding/embed">Embed the widget! 🚀</Link>
+                <Link to="/onboarding/settings">Continue to Settings</Link>
               </Button>
             </div>
           )}

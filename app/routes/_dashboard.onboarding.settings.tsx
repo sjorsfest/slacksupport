@@ -15,7 +15,7 @@ export default function OnboardingSettings() {
           Settings
         </h1>
         <p className="text-muted-foreground text-base lg:text-lg">
-          Set up office hours and allowed domains before connecting an integration.
+          Set up office hours and allowed domains after connecting an integration.
         </p>
       </div>
 
@@ -24,7 +24,7 @@ export default function OnboardingSettings() {
         config={config}
         isFreemiumUser={isFreemiumUser}
         showContinue
-        continueHref="/onboarding/connect"
+        continueHref="/onboarding/embed"
       />
     </div>
   );

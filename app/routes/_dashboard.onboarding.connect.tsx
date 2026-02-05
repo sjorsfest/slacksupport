@@ -327,13 +327,17 @@ export default function OnboardingConnect() {
         )}
       </div>
 
-      {hasAnyIntegration && (
-        <div className="mt-10 flex justify-end">
+      <div className="mt-10 flex justify-end">
+        {hasAnyIntegration ? (
           <Button asChild className="bg-secondary hover:bg-secondary/90 text-white">
-            <Link to="/onboarding/embed">Continue to Embed</Link>
+            <Link to="/onboarding/settings">Continue to Settings</Link>
           </Button>
-        </div>
-      )}
+        ) : (
+          <Button asChild variant="secondary">
+            <Link to="/onboarding/settings">Connect later</Link>
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
