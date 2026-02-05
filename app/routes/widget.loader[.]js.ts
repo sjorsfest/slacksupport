@@ -89,15 +89,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
       opacity: 1;
       transform: scale(1) translateY(0);
       pointer-events: auto;
-      animation: sw-button-pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, sw-bounce-idle 3s ease-in-out 0.5s infinite;
+      animation: sw-button-pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
     }
-    
+
     .sw-button:hover {
-      transform: scale(1.02) rotate(-4deg);
-      box-shadow: 
+      transform: scale(1.08);
+      box-shadow:
         4px 4px 0px 0px #1a1a1a,
         0 0 0 6px var(--sw-primary-light);
-      animation: sw-wiggle 0.4s ease-in-out;
     }
     
     .sw-button:active {
@@ -136,8 +136,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
     
     .sw-button.open:hover {
-      transform: scale(1.05) rotate(0);
-      box-shadow: 
+      transform: scale(1.08);
+      box-shadow:
         4px 4px 0px 0px #1a1a1a,
         0 0 0 5px rgba(31, 41, 55, 0.2);
     }
@@ -256,18 +256,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
 
     /* Animations */
-    @keyframes sw-bounce-idle {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-3px); }
-    }
-    
-    @keyframes sw-wiggle {
-      0%, 100% { transform: scale(1.02) rotate(-4deg); }
-      25% { transform: scale(1.02) rotate(4deg); }
-      50% { transform: scale(1.02) rotate(-3deg); }
-      75% { transform: scale(1.02) rotate(3deg); }
-    }
-    
     @keyframes sw-celebrate {
       0% { transform: scale(0.92); }
       30% { transform: scale(1.15) rotate(-10deg); }
