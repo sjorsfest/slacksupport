@@ -93,7 +93,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }
     
     .sw-button:hover {
-      transform: scale(1.08) rotate(-8deg);
+      transform: scale(1.02) rotate(-4deg);
       box-shadow: 
         4px 4px 0px 0px #1a1a1a,
         0 0 0 6px var(--sw-primary-light);
@@ -258,14 +258,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
     /* Animations */
     @keyframes sw-bounce-idle {
       0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-5px); }
+      50% { transform: translateY(-3px); }
     }
     
     @keyframes sw-wiggle {
-      0%, 100% { transform: scale(1.08) rotate(-8deg); }
-      25% { transform: scale(1.08) rotate(8deg); }
-      50% { transform: scale(1.08) rotate(-6deg); }
-      75% { transform: scale(1.08) rotate(6deg); }
+      0%, 100% { transform: scale(1.02) rotate(-4deg); }
+      25% { transform: scale(1.02) rotate(4deg); }
+      50% { transform: scale(1.02) rotate(-3deg); }
+      75% { transform: scale(1.02) rotate(3deg); }
     }
     
     @keyframes sw-celebrate {
@@ -592,7 +592,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
             tooltip.classList.remove('visible');
           }, 5000);
         }
-      }, 1000);
+      }, 6000);
     }
   });
 
